@@ -1,0 +1,10 @@
+/Debug
+/Release
+/build
+*.sdf
+*.suo
+*.user
+*.opensdf
+*.vcxproj
+*.sln
+*.filters

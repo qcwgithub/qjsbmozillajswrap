@@ -1,0 +1,13 @@
+//
+//  mozjs.xcconfig
+//  MozjsWrap
+//
+//  Created by Chogri on 14-11-11.
+//  Copyright (c) 2014年 Woobest. All rights reserved.
+//
+
+PATH_SRC_ROOT  = "${SOURCE_ROOT}";
+
+PATH_IOS_HEADER = $(PATH_SRC_ROOT)/Source/ios;
+
+CUSTOM_HEADER_PATH = $PATH_IOS_HEADER; 

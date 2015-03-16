@@ -1,0 +1,1 @@
+ndk-build NDK_MODULE_PATH=. NDK_DEBUG=0 NDK_LOG=1 V=1 2>&1|tee t.log
