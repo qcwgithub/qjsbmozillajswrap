@@ -283,6 +283,7 @@ extern "C"{
     MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objRef);
     MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef);
     MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* objRef);
+    MOZ_API bool Call(JSContext *cx, unsigned argc, JS::Value *vp);
 }
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__

@@ -967,3 +967,8 @@ MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* ob
         JS_SetProperty(g_cx, objRef, "Value", val);
     }
 }
+
+MOZ_API bool Call(JSContext *cx, unsigned argc, JS::Value *vp)
+{
+
+}

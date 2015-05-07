@@ -18,6 +18,7 @@
             'sources': [
                 '<(source_path)/mozjswrap.cpp',
                 '<(source_path)/mozjswrap.h',
+                '<(source_path)/callstack.cpp',
             ],
             'conditions': 
             [
