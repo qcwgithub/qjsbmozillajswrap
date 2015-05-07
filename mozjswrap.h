@@ -274,6 +274,10 @@ extern "C"{
     MOZ_API void JSh_DelHeapObject(JS::Heap<JSObject*>* heapObj);
 
     MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data);
+
+    MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global, JSFinalizeOp finalizer);
+    MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj);
+    MOZ_API bool NewJSClassObjectRef(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objWrap);
 }
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__

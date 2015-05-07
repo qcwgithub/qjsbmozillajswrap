@@ -37,6 +37,10 @@ jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr)
     return rt;
 }
 
+JSRuntime* g_rt = 0;
+JSContext* g_cx = 0;
+JSObject* g_global = 0;
+JSFinalizeOp g_finalizer = 0;
 
 void sc_finalize(JSFreeOp* freeOp, JSObject* obj)
 {
@@ -838,4 +842,100 @@ MOZ_API void JSh_DelHeapObject(JS::Heap<JSObject*>* heapObj)
 MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data)
 {
     JS_SetGCCallback(rt, cb, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct SplitUtil 
+{
+    SplitUtil(char* s, const char* sp) { str = s; splitStr = sp;}
+    char* str;
+    const char* splitStr;
+    const char* next() {
+        char* buf = strstr(str, splitStr);
+        if (buf) {
+            buf[0] = 0;
+            const char* ret = str;
+            str = buf + strlen(splitStr);
+            return ret;
+        }
+        if (str[0])
+        {
+            const char* ret = str;
+            str += strlen(str);
+            return ret;
+        }
+        return 0;
+    }
+};
+MOZ_API JSObject* GetJSTableByName(char* name)
+{
+    SplitUtil split(name, ".");
+    const char* n = split.next();
+    if (!n) return 0;
+
+    JS::RootedObject obj(g_cx, g_global);
+    JS::RootedValue val(g_cx);
+    while (n)
+    {
+        JS_GetProperty(g_cx, obj, n, &val);
+        if (val.isObject()) 
+        {
+            obj = &val.toObject();
+            n = split.next();
+        }
+        else
+            return 0;
+    }
+    return obj;
+}
+MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global, JSFinalizeOp finalizer)
+{
+    g_rt = rt;
+    g_cx = cx;
+    g_global = global;
+    g_finalizer = finalizer;
+}
+
+//
+// 创建一个JS类对象
+// 返回jsObj, nativeObj
+//
+MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj)
+{
+    JSObject* _t;
+    
+    if (_t = GetJSTableByName(name))
+    {
+        JS::RootedObject tableObj(g_cx, _t);
+        if (_t = JSh_NewObjectAsClass(g_cx, tableObj, "ctor", 0))
+        {
+            JS::RootedObject jsObj(g_cx, _t);
+            JS::RootedObject nativeObj(g_cx, JSh_NewMyClass(g_cx, g_finalizer));
+            JS::RootedValue val(g_cx);
+            val.setObject(*nativeObj);
+            JS_SetProperty(g_cx, jsObj, "__nativeObj", val);
+
+            *retJSObj = jsObj;
+            *retNativeObj = nativeObj;
+            return true;
+        }
+    }
+    return false;
+}
+//
+// 创建一个JS类对象
+// 设置 objWrap.Value = jsObj
+// 返回 jsObj, nativeObj
+//
+MOZ_API bool NewJSClassObjectRef(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objWrap)
+{
+    if (NewJSClassObject(name, retJSObj, retNativeObj))
+    {
+        JS::RootedValue val(g_cx);
+        val.setObject(**retJSObj);
+        JS_SetProperty(g_cx, objWrap, "Value", val);
+        return true;
+    }
+    return false;
 }
