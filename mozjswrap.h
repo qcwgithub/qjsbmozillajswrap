@@ -80,16 +80,8 @@ extern "C"{
 	MOZ_API JSObject* JSh_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto, JSObject *parent);
 
 	MOZ_API JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp);
-
-	MOZ_API bool JSh_ArgvIsUndefined(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsNull(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsNullOrUndefined(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsInt32(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsDouble(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsBool(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsString(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsNumber(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvIsObject(JSContext* cx, jsval* vp, int i);
+    
+    MOZ_API unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i);
 
 	MOZ_API bool JSh_ArgvBool(JSContext* cx, jsval* vp, int i);
 	MOZ_API double JSh_ArgvDouble(JSContext* cx, jsval* vp, int i);
@@ -276,6 +268,22 @@ extern "C"{
     MOZ_API void JSh_DelPPointer(PPV* p);
     MOZ_API void JSh_SetPPointer(PPV* p, PPV pValue);
     MOZ_API PPV JSh_GetPPointer(PPV* p);
+
+    struct MyHeapObj
+    {
+        JS::Heap<JSObject*>* heapJSObj;
+        JSObject* jsObj;
+
+        JS::Heap<JSObject*>* heapNativeObj;
+        JSObject* nativeObj;
+    };
+
+    // MOZ_API void 
+
+    MOZ_API JS::Heap<JSObject*>* JSh_NewHeapObject(JSObject* obj);
+    MOZ_API void JSh_DelHeapObject(JS::Heap<JSObject*>* heapObj);
+
+    MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data);
 }
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__

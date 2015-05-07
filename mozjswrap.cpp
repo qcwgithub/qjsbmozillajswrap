@@ -300,15 +300,12 @@ JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp)
 	return obj;
 }
 
-bool JSh_ArgvIsUndefined(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isUndefined(); }
-bool JSh_ArgvIsNull(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isNull(); }
-bool JSh_ArgvIsNullOrUndefined(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isNullOrUndefined(); }
-bool JSh_ArgvIsInt32(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isInt32(); }
-bool JSh_ArgvIsDouble(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isDouble(); }
-bool JSh_ArgvIsBool(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isBoolean(); }
-bool JSh_ArgvIsString(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isString(); }
-bool JSh_ArgvIsNumber(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isNumber(); }
-bool JSh_ArgvIsObject(JSContext* cx, jsval* vp, int i) { return (JS_ARGV(cx, vp)[i]).isObject(); }
+unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i)
+{
+    // JSValueTag
+    jsval& val = JS_ARGV(cx, vp)[i];
+    return val.data.s.tag;
+}
 
 bool JSh_ArgvBool(JSContext* cx, jsval* vp, int i) { return JSVAL_TO_BOOLEAN(JS_ARGV(cx, vp)[i]); }
 double JSh_ArgvDouble(JSContext* cx, jsval* vp, int i) { return JSVAL_TO_DOUBLE(JS_ARGV(cx, vp)[i]); }
@@ -836,4 +833,19 @@ MOZ_API PPV JSh_GetPPointer(PPV* p)
         return *p;
     }
     return 0;
+}
+
+MOZ_API JS::Heap<JSObject*>* JSh_NewHeapObject(JSObject* obj)
+{
+    return new JS::Heap<JSObject*>(obj);
+}
+
+MOZ_API void JSh_DelHeapObject(JS::Heap<JSObject*>* heapObj)
+{
+    delete heapObj;
+}
+
+MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data)
+{
+    JS_SetGCCallback(rt, cb, data);
 }
