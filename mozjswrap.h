@@ -107,16 +107,6 @@ extern "C"{
 	////////////////////////////////////////////////////////////////////////////////////
 	// generate jsval
 
-	MOZ_API bool JSh_JsvalIsUndefined(jsval* vp);
-	MOZ_API bool JSh_JsvalIsNull(jsval* vp);
-	MOZ_API bool JSh_JsvalIsNullOrUndefined(jsval* vp);
-	MOZ_API bool JSh_JsvalIsInt32(jsval* vp);
-	MOZ_API bool JSh_JsvalIsDouble(jsval* vp);
-	MOZ_API bool JSh_JsvalIsBool(jsval* vp);
-	MOZ_API bool JSh_JsvalIsString(jsval* vp);
-	MOZ_API bool JSh_JsvalIsNumber(jsval* vp);
-	MOZ_API bool JSh_JsvalIsObject(jsval* vp);
-
 	MOZ_API void JSh_SetJsvalBool(jsval* vp, bool value);
 	MOZ_API void JSh_SetJsvalDouble(jsval* vp, double value);
 	MOZ_API void JSh_SetJsvalInt(jsval* vp, int value);

@@ -373,16 +373,6 @@ void JSh_SetRvalJSVAL(JSContext* cx, jsval* vp, jsval* value) { JS_SET_RVAL(cx, 
 ////////////////////////////////////////////////////////////////////////////////////
 // generate jsval
 
-bool JSh_JsvalIsUndefined(jsval* vp) { return vp->isUndefined(); }
-bool JSh_JsvalIsNull(jsval* vp) { return vp->isNull(); }
-bool JSh_JsvalIsNullOrUndefined(jsval* vp) { return vp->isNullOrUndefined(); }
-bool JSh_JsvalIsInt32(jsval* vp) { return vp->isInt32(); }
-bool JSh_JsvalIsDouble(jsval* vp) { return vp->isDouble(); }
-bool JSh_JsvalIsBool(jsval* vp) { return vp->isBoolean(); }
-bool JSh_JsvalIsString(jsval* vp) { return vp->isString(); }
-bool JSh_JsvalIsNumber(jsval* vp) { return vp->isNumber(); }
-bool JSh_JsvalIsObject(jsval* vp) { return vp->isObject(); }
-
 void JSh_SetJsvalBool(jsval* vp, bool value)  { *vp = BOOLEAN_TO_JSVAL(value); }
 void JSh_SetJsvalDouble(jsval* vp, double value) { *vp = DOUBLE_TO_JSVAL(value); }
 void JSh_SetJsvalInt(jsval* vp, int value) { *vp = INT_TO_JSVAL(value); }
