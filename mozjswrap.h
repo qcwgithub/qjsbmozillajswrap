@@ -275,9 +275,14 @@ extern "C"{
 
     MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data);
 
+    //
+    // anvanced functions
+    //
+
     MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global, JSFinalizeOp finalizer);
-    MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj);
-    MOZ_API bool NewJSClassObjectRef(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objWrap);
+    MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objRef);
+    MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef);
+    MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* objRef);
 }
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__

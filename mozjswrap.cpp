@@ -901,7 +901,7 @@ MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global
 // 创建一个JS类对象
 // 返回jsObj, nativeObj
 //
-MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj)
+MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objRef)
 {
     JSObject* _t;
     
@@ -918,24 +918,52 @@ MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNat
 
             *retJSObj = jsObj;
             *retNativeObj = nativeObj;
+
+            if (objRef)
+            {
+                val.setObject(*jsObj);
+                JS_SetProperty(g_cx, objRef, "Value", val);
+            }
             return true;
         }
     }
     return false;
 }
-//
-// 创建一个JS类对象
-// 设置 objWrap.Value = jsObj
-// 返回 jsObj, nativeObj
-//
-MOZ_API bool NewJSClassObjectRef(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objWrap)
+MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef)
 {
-    if (NewJSClassObject(name, retJSObj, retNativeObj))
+    JS::RootedValue val(g_cx);
+    JS::RootedObject obj(g_cx, jsObj);
+
+    val.setDouble((double)x);
+    JS_SetProperty(g_cx, obj, "x", val);
+
+    val.setDouble((double)y);
+    JS_SetProperty(g_cx, obj, "y", val);
+
+    if (objRef)
     {
-        JS::RootedValue val(g_cx);
-        val.setObject(**retJSObj);
-        JS_SetProperty(g_cx, objWrap, "Value", val);
-        return true;
+        val.setObject(*jsObj);
+        JS_SetProperty(g_cx, objRef, "Value", val);
     }
-    return false;
+}
+
+MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* objRef)
+{
+    JS::RootedValue val(g_cx);
+    JS::RootedObject obj(g_cx, jsObj);
+
+    val.setDouble((double)x);
+    JS_SetProperty(g_cx, obj, "x", val);
+
+    val.setDouble((double)y);
+    JS_SetProperty(g_cx, obj, "y", val);
+
+    val.setDouble((double)z);
+    JS_SetProperty(g_cx, obj, "z", val);
+
+    if (objRef)
+    {
+        val.setObject(*jsObj);
+        JS_SetProperty(g_cx, objRef, "Value", val);
+    }
 }
