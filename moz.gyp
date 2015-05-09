@@ -19,6 +19,10 @@
                 '<(source_path)/mozjswrap.cpp',
                 '<(source_path)/mozjswrap.h',
                 '<(source_path)/callstack.cpp',
+                '<(source_path)/callstack.h',
+                '<(source_path)/csapi.h',
+                '<(source_path)/heapObjStorage.cpp',
+                '<(source_path)/heapObjStorage.h'
             ],
             'conditions': 
             [

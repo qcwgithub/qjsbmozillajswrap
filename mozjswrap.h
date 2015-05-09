@@ -21,6 +21,22 @@
 #define MOZ_API
 #endif
 
+extern JSRuntime* g_rt;
+extern JSContext* g_cx;
+extern JSObject* g_global;
+
+// C# 获取JS对象就是获取一个OBJID
+typedef int OBJID;
+
+struct MyHeapObj
+{
+    JS::Heap<JSObject*>* heapJSObj;
+    JSObject* jsObj; // old obj, just remember here
+
+    JS::Heap<JSObject*>* heapNativeObj;
+    JSObject* nativeObj;
+};
+
 extern "C"{
 
 	MOZ_API bool  JSh_Init(void);
@@ -259,14 +275,7 @@ extern "C"{
     MOZ_API void JSh_SetPPointer(PPV* p, PPV pValue);
     MOZ_API PPV JSh_GetPPointer(PPV* p);
 
-    struct MyHeapObj
-    {
-        JS::Heap<JSObject*>* heapJSObj;
-        JSObject* jsObj;
-
-        JS::Heap<JSObject*>* heapNativeObj;
-        JSObject* nativeObj;
-    };
+    
 
     // MOZ_API void 
 
@@ -280,10 +289,8 @@ extern "C"{
     //
 
     MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global, JSFinalizeOp finalizer);
-    MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objRef);
     MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef);
     MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* objRef);
-    MOZ_API bool Call(JSContext *cx, unsigned argc, JS::Value *vp);
 }
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__

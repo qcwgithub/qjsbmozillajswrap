@@ -968,7 +968,49 @@ MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* ob
     }
 }
 
-MOZ_API bool Call(JSContext *cx, unsigned argc, JS::Value *vp)
-{
+// void jsGCCallback (JSRuntime *rt, JSGCStatus status, void *data)
+// {
+// }
 
+// 
+// 返回0表示没错
+//
+MOZ_API int InitJSEngine(JSErrorReporter er)
+{
+    JSRuntime* rt;
+    JSContext* cx;
+    JSObject* global;
+
+    if (!JS_Init())
+    {
+        return 1;
+    }
+
+    rt = JS_NewRuntime(8 * 1024 * 1024, JS_NO_HELPER_THREADS);
+    JS_SetNativeStackQuota(rt, 500000, 0, 0);
+
+    cx = JS_NewContext(rt, 8192);
+
+    // Set error reporter
+    JS_SetErrorReporter(cx, er);
+
+    JS::CompartmentOptions options;
+	options.setVersion(JSVERSION_LATEST);
+	global = JS_NewGlobalObject(cx, &global_class, 0/*principals*/, JS::DontFireOnNewGlobalHook, options);
+        
+    JSCompartment* oldCompartment = JS_EnterCompartment(cx, global);
+    if (!JS_InitStandardClasses(cx, global))
+    {
+        return 2;
+    }
+    JS_InitReflect(cx, global);
+
+    //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
+
+    // 赋值全局变量
+    g_rt = rt;
+    g_cx = cx;
+    g_global = global;
+    return 0;
 }
+
