@@ -59,8 +59,14 @@ bool deleteJSObject(OBJID id)
 //     }
 }
 
+//
+// for
+// 1) Array
+// 2) Function Arguments
+// 
 JS::Heap<JS::Value>* arrHeapObj = 0;
 int arrHeapObjSize = 0;
+int arrHeapObjLastIndex = -1;
 JS::Heap<JS::Value>* makeSureArrHeapObj(int index)
 {
     int size = index + 1;
@@ -73,7 +79,7 @@ JS::Heap<JS::Value>* makeSureArrHeapObj(int index)
         while (S < size)
             S *= 2;
 
-        JS::Heap<JS::Value>* arr = new JS::Heap<JS::Value>(arrHeapObjSize);
+        JS::Heap<JS::Value>* arr = new JS::Heap<JS::Value>[arrHeapObjSize];
         if (index > 0)
         {
             int N = min(oldS - 1, index);
@@ -87,5 +93,78 @@ JS::Heap<JS::Value>* makeSureArrHeapObj(int index)
 MOZ_API void moveVal2Arr(int i, JS::HandleValue val)
 {
     JS::Heap<JS::Value>* arr = makeSureArrHeapObj(i);
-    arr[i] = *pvalTemp;
+    arr[i] = val;
+	arrHeapObjLastIndex = i;
+}
+
+void clearArrObjectVal()
+{
+	int& index = arrHeapObjLastIndex;
+	if (index >= 0)
+	{
+		for (int i = 0; i <= index; i++)
+		{
+			arrHeapObj[i] = 0;
+		}
+		index = -1;
+	}
+}
+
+std::map<OBJID, JSObject**> mapObjectRoot;
+MOZ_API bool addObjectRoot( OBJID id )
+{
+	if (mapObjectRoot.find(id) != mapObjectRoot.end())
+	{
+		return true;
+	}
+	JSObject* jsObj = ID2JSObj(id);
+	if (jsObj == 0)
+		return false;
+	JSObject** pjsObj = new JSObject*;
+	*pjsObj = jsObj;
+	bool ret = JS_AddObjectRoot(g_cx, pjsObj);
+	mapObjectRoot[id] = pjsObj;
+	return ret;
+}
+
+MOZ_API bool removeObjectRoot( OBJID id )
+{
+	std::map<OBJID, JSObject**>::iterator it = mapObjectRoot.find(id);
+	if (it != mapObjectRoot.end())
+	{
+		JSObject** pjsObj = it->second;
+		JS_RemoveObjectRoot(g_cx, pjsObj);
+		delete pjsObj;
+		mapObjectRoot.erase(it);
+		return true;
+	}
+	return false;
+}
+
+std::map<int, JS::Heap<JS::Value> > mapHeapVal;
+int mapHeapVal_i = 1;
+
+MOZ_API void removeHeapMapVal( int index )
+{
+	std::map<int, JS::Heap<JS::Value> >::iterator it = mapHeapVal.find(index);
+	if (it != mapHeapVal.end())
+		mapHeapVal.erase(it);
+}
+
+MOZ_API int moveVal2HeapMap()
+{
+	mapHeapVal[mapHeapVal_i] = valTemp;
+	return mapHeapVal_i++;
+}
+
+bool moveValFromMap2Arr(int iMap, int iArr)
+{
+	std::map<int, JS::Heap<JS::Value> >::iterator it = mapHeapVal.find(iMap);
+	if (it != mapHeapVal.end())
+	{
+		JS::RootedValue val(g_cx, it->second.get());
+		moveVal2Arr(iArr, val);
+		return true;
+	}
+	return false;
 }

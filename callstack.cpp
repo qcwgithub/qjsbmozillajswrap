@@ -563,9 +563,41 @@ void setObject(eSetType e, OBJID id)
         break;
     }
 }
-void setArray(eSetType e)
+void setArray(eSetType e, int count)
 {
+	JSObject* _t = JS_NewArrayObject(g_cx, count, 0 /* jsval* */);
+	JS::RootedObject arrObj(g_cx, _t);
+	for (int i = 0; i < count; i++)
+	{
+		JS_SetElement(g_cx, arrObj, i, &arrHeapObj[i]);
+	}
 
+	// TODO clear arrHeapObj
+
+	switch (e)
+	{
+	case SetJsval:
+		valTemp.setObjectOrNull(arrObj);
+		break;
+	case SetRval:
+		{
+			JS::RootedValue val(g_cx);
+			val.setObjectOrNull(arrObj);
+			JS_SET_RVAL(g_cx, g_vp, val);
+		}
+		break;
+	case SetArgRef:
+		{
+			int i = currIndex;
+			JS::RootedValue val(g_cx, g_vp[i]);
+			JS::RootedObject jsObj(g_cx, &val.toObject());
+
+			JS::RootedValue v(g_cx);
+			val.setObjectOrNull(arrObj);
+			JS_SetProperty(g_cx, jsObj, "Value", v);
+		}
+		break;
+	}
 }
 
 MOZ_API bool isVector2( int i )
@@ -608,17 +640,17 @@ MOZ_API bool isVector3( int i )
 
 MOZ_API void moveTempVal2Arr( int i )
 {
-    moveVal2Arr(i, *pvalTemp);
+    moveVal2Arr(i, *valTemp);
 }
 
 extern JS::Heap<JS::Value>* arrHeapObj;
 MOZ_API bool callFunction(OBJID jsObjID, const char* functionName, int argCount)
 {
-    JS::RootedObject jsObj = ID2JSObj(jsObjID);
+    JS::RootedObject jsObj(g_cx, ID2JSObj(jsObjID));
     if (jsObj == 0)
         return false;
 
-    // TODO Çå¿Õ arrHeapObj
+    // TODO clear arrHeapObj
     if (argCount == 0)
     {
         return JS_CallFunctionName(g_cx, jsObj, functionName, 0/* argc */, 0/* argv */, &valFunRet);

@@ -79,6 +79,7 @@ extern "C"
     void valSetVector3(JS::RootedValue* pval, float x, float y, float z);
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
     MOZ_API void setObject(eSetType e, OBJID id);
+	MOZ_API void setArray(eSetType e, int count);
 
     MOZ_API bool isVector2(int i);
     MOZ_API bool isVector3(int i);
@@ -87,6 +88,8 @@ extern "C"
     MOZ_API bool callFunction(OBJID jsObjID, const char* functionName, int argCount);
 
     /////////////////////////////////////////////////////////////////////
+
+
 }
 
 #endif // #ifndef __callstack_h__
