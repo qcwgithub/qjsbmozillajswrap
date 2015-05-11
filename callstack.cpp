@@ -12,8 +12,12 @@ int currIndex = 0;
 
 JS::RootedValue* pvalFunRet = 0;
 JS::RootedValue* pvalTemp = 0;
+CSEntry csEntry = 0; 
 
-
+MOZ_API void SetCSEntry(CSEntry entry)
+{
+	csEntry = entry;
+}
 bool JSCall(JSContext *cx, int argc, JS::Value *vp)
 {
     g_vp = vp;
@@ -31,9 +35,10 @@ bool JSCall(JSContext *cx, int argc, JS::Value *vp)
     pvalTemp = &valTemp;
 
     currIndex = 4;
-
-    return true;
+	bool ret = csEntry(op, slot, index, isStatic, argc - currIndex);
+	return ret;
 }
+
 
 int getCurrIndex()
 {

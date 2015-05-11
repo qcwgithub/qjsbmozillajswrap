@@ -20,6 +20,8 @@ enum eSetType
 
 extern "C"
 {
+	typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
+	MOZ_API void SetCSEntry(CSEntry entry);
     bool JSCall(JSContext *cx, int argc, JS::Value *vp);
 
     MOZ_API int getCurrIndex();

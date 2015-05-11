@@ -48,6 +48,8 @@ void deleteJSObject(JSObject* jsObj)
     {
         if (*(it->second.heapJSObj) == jsObj)
         {
+			delete it->second.heapJSObj;
+			delete it->second.heapNativeObj;
             mapObjs.erase(it);
             return;
         }

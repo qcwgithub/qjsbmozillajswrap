@@ -272,23 +272,21 @@ bool JSh_EvaluateScript(JSContext *cx, JSObject *obj,
 JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp)
 {
 	JS::RootedValue nsval(cx);
-
-
-
 	JS_GetProperty(cx, glob, className, &nsval);
-	JSObject* jsObject = JSVAL_TO_OBJECT(nsval);
-	if (jsObject == 0)
-		return 0;
-
-	JS_GetProperty(cx, jsObject, "prototype", &nsval);
-	JSObject* proto = JSVAL_TO_OBJECT(nsval);
-	if (proto == 0)
-		return 0;
-
-	JSClass* jsClass = &qiucw_class;
-	jsClass->finalize = finalizeOp;
-	JSObject* obj = JS_NewObject(cx, jsClass, proto, 0/* parentProto */);
-	return obj;
+	if (nsval.isObject())
+	{
+		JS::RootedObject jsObject(cx, &nsval.toObject());
+		JS_GetProperty(cx, jsObject, "prototype", &nsval);
+		if (nsval.isObject())
+		{
+			jsObject = &nsval.toObject();
+			JSClass* jsClass = &qiucw_class;
+			jsClass->finalize = finalizeOp;
+			JSObject* obj = JS_NewObject(cx, jsClass, jsObject/* proto */, 0/* parentProto */);
+			return obj;
+		}
+	}
+	return 0;
 }
 
 JSObject* JSh_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto, JSObject *parent)
@@ -868,6 +866,7 @@ struct SplitUtil
         return 0;
     }
 };
+// TODO cache?
 MOZ_API JSObject* GetJSTableByName(char* name)
 {
     SplitUtil split(name, ".");
@@ -903,7 +902,7 @@ MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global
 //
 MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objRef)
 {
-    JSObject* _t;
+	JS::RootedObject _t(g_cx);
     
     if (_t = GetJSTableByName(name))
     {
@@ -975,6 +974,7 @@ MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* ob
 // 
 // 返回0表示没错
 //
+JSCompartment* oldCompartment = 0;
 MOZ_API int InitJSEngine(JSErrorReporter er)
 {
     JSRuntime* rt;
@@ -998,7 +998,7 @@ MOZ_API int InitJSEngine(JSErrorReporter er)
 	options.setVersion(JSVERSION_LATEST);
 	global = JS_NewGlobalObject(cx, &global_class, 0/*principals*/, JS::DontFireOnNewGlobalHook, options);
         
-    JSCompartment* oldCompartment = JS_EnterCompartment(cx, global);
+    oldCompartment = JS_EnterCompartment(cx, global);
     if (!JS_InitStandardClasses(cx, global))
     {
         return 2;
@@ -1012,5 +1012,33 @@ MOZ_API int InitJSEngine(JSErrorReporter er)
     g_cx = cx;
     g_global = global;
     return 0;
+}
+
+
+MOZ_API void ShutdownJSEngine()
+{
+	JS_LeaveCompartment(g_cx, oldCompartment);
+
+	// TODO
+// 	JSMgr.ClearJSCSRelation();
+// 	JSMgr.ClearRootedObject();
+// 	JSMgr.ClearCompiledScript();
+
+	JS_DestroyContext(g_cx);
+	JS_DestroyRuntime(g_rt);
+	JS_ShutDown();
+}
+
+MOZ_API JSContext* GetContext()
+{
+	return g_cx;
+}
+MOZ_API JSObject* GetGlobal()
+{
+	return g_global;
+}
+MOZ_API JSRuntime* GetRuntime()
+{
+	return g_rt;
 }
 
