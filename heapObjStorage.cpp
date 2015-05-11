@@ -41,17 +41,51 @@ JSObject* ID2JSObj(OBJID id)
     return 0;
 }
 
-void deleteJSObject(JSObject* jsObj)
+bool deleteJSObject(OBJID id)
 {
-    map<OBJID, MyHeapObj>::iterator it = mapObjs.begin();
-    for (; it != mapObjs.end(); it++)
+    map<OBJID, MyHeapObj>::iterator it = mapObjs.find(id);
+    if (it != mapObjs.end())
+        mapObjs.erase(it);
+//     map<OBJID, MyHeapObj>::iterator it = mapObjs.begin();
+//     for (; it != mapObjs.end(); it++)
+//     {
+//         if (*(it->second.heapJSObj) == jsObj)
+//         {
+// 			delete it->second.heapJSObj;
+// 			delete it->second.heapNativeObj;
+//             mapObjs.erase(it);
+//             return;
+//         }
+//     }
+}
+
+JS::Heap<JS::Value>* arrHeapObj = 0;
+int arrHeapObjSize = 0;
+JS::Heap<JS::Value>* makeSureArrHeapObj(int index)
+{
+    int size = index + 1;
+    int& S = arrHeapObjSize;
+    if (arrHeapObj == 0 || S < size) 
     {
-        if (*(it->second.heapJSObj) == jsObj)
+        int oldS = S;
+        if (S == 0)
+            S = 8;
+        while (S < size)
+            S *= 2;
+
+        JS::Heap<JS::Value>* arr = new JS::Heap<JS::Value>(arrHeapObjSize);
+        if (index > 0)
         {
-			delete it->second.heapJSObj;
-			delete it->second.heapNativeObj;
-            mapObjs.erase(it);
-            return;
+            int N = min(oldS - 1, index);
+            for (int i = 0; i < N; i++)
+                arr[i] = oldS[i];
         }
+        arrHeapObj = arr;
     }
+}
+
+MOZ_API void moveVal2Arr(int i, JS::HandleValue val)
+{
+    JS::Heap<JS::Value>* arr = makeSureArrHeapObj(i);
+    arr[i] = *pvalTemp;
 }

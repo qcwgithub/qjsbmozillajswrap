@@ -900,7 +900,8 @@ MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global
 // 创建一个JS类对象
 // 返回jsObj, nativeObj
 //
-MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNativeObj, JSObject* objRef)
+// TODO finalizer ?
+MOZ_API OBJID NewJSClassObject(char* name)
 {
 	JS::RootedObject _t(g_cx);
     
@@ -915,18 +916,42 @@ MOZ_API bool NewJSClassObject(char* name, JSObject** retJSObj, JSObject** retNat
             val.setObject(*nativeObj);
             JS_SetProperty(g_cx, jsObj, "__nativeObj", val);
 
-            *retJSObj = jsObj;
-            *retNativeObj = nativeObj;
-
-            if (objRef)
-            {
-                val.setObject(*jsObj);
-                JS_SetProperty(g_cx, objRef, "Value", val);
-            }
-            return true;
+            OBJID id = storeJSObject(jsObj, nativeObj);
+            return id;
+// 
+//             *retJSObj = jsObj;
+//             *retNativeObj = nativeObj;
+// 
+//             if (objRef)
+//             {
+//                 val.setObject(*jsObj);
+//                 JS_SetProperty(g_cx, objRef, "Value", val);
+//             }
+//             return true;
         }
     }
-    return false;
+    return 0;
+}
+
+MOZ_API bool RemoveJSClassObject(OBJID odjID)
+{
+    return deleteJSObject(odjID);
+}
+MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
+{
+    JS::RootedObject obj = ID2JSObj(objID);
+    if (obj == 0)
+        return false;
+
+    JS::RootedValue val(g_cx);
+    JS_GetProperty(g_cx, obj, functionName, &val);
+
+    if (val.isNullOrUndefined())
+        return false;
+
+    if (!JS_ConvertValue(cx, val, JSTYPE_FUNCTION, &val))
+        return false;
+    return true;
 }
 MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef)
 {
@@ -975,7 +1000,8 @@ MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* ob
 // 返回0表示没错
 //
 JSCompartment* oldCompartment = 0;
-MOZ_API int InitJSEngine(JSErrorReporter er)
+extern CSEntry csEntry;
+MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req)
 {
     JSRuntime* rt;
     JSContext* cx;
@@ -1004,6 +1030,15 @@ MOZ_API int InitJSEngine(JSErrorReporter er)
         return 2;
     }
     JS_InitReflect(cx, global);
+    csEntry = entry;
+
+    //
+    // register CS
+    //
+    JSClass* jsClass = JSh_NewClass("CS", 0/* flag */, 0/* finalizer */);
+    JS::RootedObject CS_obj = JSh_InitClass(cx, global, jsClass);
+    JS_DefineFunction(cx, CS_obj, "Call", JSCall, 0/* narg */, 0);
+    JS_DefineFunction(cx, CS_obj, "require", csEntry, 0/* narg */, 0);
 
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
 

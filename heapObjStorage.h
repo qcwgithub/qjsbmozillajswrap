@@ -13,6 +13,8 @@ OBJID storeJSObject(JS::HandleObject jsObj, JS::HandleObject nativeObj);
 // 
 OBJID jsObj2ID(JS::HandleObject nativeObj);
 JSObject* ID2JSObj(OBJID id);
-void deleteJSObject(JSObject* jsObj);
+bool deleteJSObject(OBJID id);
+
+MOZ_API void moveVal2Arr(int i, JS::HandleValue val);
 
 #endif // #ifndef __heap_obj_storage_h__

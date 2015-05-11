@@ -8,16 +8,15 @@
 //
 JS::Value* g_vp = 0;
 int g_argc = 0;
+// 当前取到第几个参数了
 int currIndex = 0;
+// 实际几个参数
+int actualArgc = 0;
 
-JS::RootedValue* pvalFunRet = 0;
-JS::RootedValue* pvalTemp = 0;
+JS::Heap<JS::Value> valFunRet;
+JS::Heap<JS::Value> valTemp;
+
 CSEntry csEntry = 0; 
-
-MOZ_API void SetCSEntry(CSEntry entry)
-{
-	csEntry = entry;
-}
 bool JSCall(JSContext *cx, int argc, JS::Value *vp)
 {
     g_vp = vp;
@@ -28,21 +27,42 @@ bool JSCall(JSContext *cx, int argc, JS::Value *vp)
     int index = JSVAL_TO_INT(JS_ARGV(cx, vp)[2]);
     bool isStatic = JSVAL_TO_BOOLEAN(JS_ARGV(cx, vp)[3]);
 
-    JS::RootedValue valFunRet(g_cx);
-    pvalFunRet = &valFunRet;
-
-    JS::RootedValue valTemp(g_cx);
-    pvalTemp = &valTemp;
+    //
+    // 计算参数个数，不算末尾的 undefined
+    //
+    // TODO check
+    actualArgc = argc;
+    while (actualArgc > 0 && (JS_ARGV(cx, vp))[actualArgc - 1].isUndefined())
+        actualArgc--;
 
     currIndex = 4;
-	bool ret = csEntry(op, slot, index, isStatic, argc - currIndex);
+	bool ret = csEntry(op, slot, index, isStatic, actualArgc - currIndex);
 	return ret;
 }
-
 
 int getCurrIndex()
 {
     return currIndex;
+}
+
+void setCurIndex(int i)
+{
+    if (i >= 0 && i < actualArgc)
+    {
+        currIndex = i;
+    }
+}
+
+unsigned int argTag( int i )
+{
+    if (i >= 0 && i < actualArgc)
+    {
+        // JSValueTag
+        jsval& val = JS_ARGV(g_cx, g_vp)[i];
+        return val.data.s.tag;
+    }
+    else
+        return 0;
 }
 
 template<class T>
@@ -75,14 +95,14 @@ T getNumber(eGetType e)
     T ret = 0;
     switch (e)
     {
-    case GetARGV:
+    case GetArg:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             ret = val2Number<T>(&val);
         }
         break;
-    case GetARGVRefOut:
+    case GetArgRef:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -93,9 +113,9 @@ T getNumber(eGetType e)
             ret = val2Number<T>(&v);
         }
         break;
-    case GetJSFUNRET:
+    case GetJSFunRet:
         {
-            ret = val2Number<T>(pvalFunRet);
+            ret = val2Number<T>(&valFunRet);
         }
         break;
     }
@@ -112,7 +132,7 @@ unsigned int    getUInt32  (eGetType e) { return getNumber<unsigned int>(e); }
 long long       getInt64   (eGetType e) { return getNumber<long long>(e); }
 unsigned long long getUInt64  (eGetType e) { return getNumber<unsigned long long>(e); }
 int             getEnum    (eGetType e) { return getNumber<int>(e); }
-float           getSignle  (eGetType e) { return getNumber<float>(e); }
+float           getSingle  (eGetType e) { return getNumber<float>(e); }
 double          getDouble  (eGetType e) { return getNumber<double>(e); }
 long long       getIntPtr  (eGetType e) { return getNumber<long long>(e); }
 
@@ -120,14 +140,14 @@ bool getBoolean(eGetType e) {
     bool ret = 0;
     switch (e)
     {
-    case GetARGV:
+    case GetArg:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             ret = val.toBoolean();
         }
         break;
-    case GetARGVRefOut:
+    case GetArgRef:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -138,9 +158,9 @@ bool getBoolean(eGetType e) {
             ret = v.toBoolean();
         }
         break;
-    case GetJSFUNRET:
+    case GetJSFunRet:
         {
-            ret = pvalFunRet->toBoolean();
+            ret = valFunRet.toBoolean();
         }
         break;
     }
@@ -150,14 +170,14 @@ const jschar* getString(eGetType e) {
     const jschar* ret = 0;
     switch (e)
     {
-    case GetARGV:
+    case GetArg:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             ret = val2String(&val);
         }
         break;
-    case GetARGVRefOut:
+    case GetArgRef:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -168,9 +188,9 @@ const jschar* getString(eGetType e) {
             ret = val2String(&v);
         }
         break;
-    case GetJSFUNRET:
+    case GetJSFunRet:
         {
-            ret = val2String(pvalFunRet);
+            ret = val2String(&valFunRet);
         }
         break;
     }
@@ -221,14 +241,14 @@ bool getVector2(eGetType e)
     bool ret = 0;
     switch (e)
     {
-    case GetARGV:
+    case GetArg:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             val2Vector2(&val);
         }
         break;
-    case GetARGVRefOut:
+    case GetArgRef:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -240,9 +260,9 @@ bool getVector2(eGetType e)
             val2Vector2(&v);
         }
         break;
-    case GetJSFUNRET:
+    case GetJSFunRet:
         {
-            val2Vector2(pvalFunRet);
+            val2Vector2(&valFunRet);
         }
         break;
     }
@@ -253,14 +273,14 @@ bool getVector3(eGetType e)
     bool ret = 0;
     switch (e)
     {
-    case GetARGV:
+    case GetArg:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             val2Vector3(&val);
         }
         break;
-    case GetARGVRefOut:
+    case GetArgRef:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -272,9 +292,9 @@ bool getVector3(eGetType e)
             val2Vector3(&v);
         }
         break;
-    case GetJSFUNRET:
+    case GetJSFunRet:
         {
-            val2Vector3(pvalFunRet);
+            val2Vector3(&valFunRet);
         }
         break;
     }
@@ -286,7 +306,7 @@ OBJID getObject(eGetType e)
     OBJID ret = 0;
     switch (e)
     {
-    case GetARGV:
+    case GetArg:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -294,7 +314,7 @@ OBJID getObject(eGetType e)
             ret = jsObj2ID(obj);
         }
         break;
-    case GetARGVRefOut:
+    case GetArgRef:
         {
             int i = currIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -307,9 +327,9 @@ OBJID getObject(eGetType e)
             ret = jsObj2ID(jsObj2);
         }
         break;
-    case GetJSFUNRET:
+    case GetJSFunRet:
         {
-            JS::RootedObject jsObj(g_cx, &pvalFunRet->toObject());
+            JS::RootedObject jsObj(g_cx, &valFunRet.toObject());
             ret = jsObj2ID(jsObj);
         }
         break;
@@ -324,12 +344,12 @@ void setNumberI(eSetType e, T value)
     switch (e)
     {
     case SetJsval:
-        pvalTemp->setInt32(vSet);
+        valTemp.setInt32(vSet);
         break;
     case SetRval:
         JS_SET_RVAL(g_cx, g_vp, INT_TO_JSVAL(vSet));
         break;
-    case UpdateARGVRefOut:
+    case SetArgRef:
         {
             int i = currIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -350,12 +370,12 @@ void setNumberF(eSetType e, T value)
     switch (e)
     {
     case SetJsval:
-        pvalTemp->setDouble(vSet);
+        valTemp.setDouble(vSet);
         break;
     case SetRval:
         JS_SET_RVAL(g_cx, g_vp, DOUBLE_TO_JSVAL(vSet));
         break;
-    case UpdateARGVRefOut:
+    case SetArgRef:
         {
             int i = currIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -379,7 +399,7 @@ void setUInt32  (eSetType e, unsigned int v)    { return setNumberI<unsigned int
 void setInt64   (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
 void setUInt64  (eSetType e, unsigned long long v) { return setNumberF<unsigned long long>(e, v); }
 void setEnum    (eSetType e, int v)             { return setNumberI<int>(e, v); }
-void setSignle  (eSetType e, float v)           { return setNumberF<float>(e, v); }
+void setSingle  (eSetType e, float v)           { return setNumberF<float>(e, v); }
 void setDouble  (eSetType e, double v)          { return setNumberF<double>(e, v); }
 void setIntPtr  (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
 void setBoolean(eSetType e, bool v)
@@ -388,12 +408,12 @@ void setBoolean(eSetType e, bool v)
     switch (e)
     {
     case SetJsval:
-        pvalTemp->setBoolean(vSet);
+        valTemp.setBoolean(vSet);
         break;
     case SetRval:
         JS_SET_RVAL(g_cx, g_vp, BOOLEAN_TO_JSVAL(vSet));
         break;
-    case UpdateARGVRefOut:
+    case SetArgRef:
         {
             int i = currIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -401,6 +421,32 @@ void setBoolean(eSetType e, bool v)
 
             JS::RootedValue v(g_cx);
             v.setBoolean(vSet);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void setString(eSetType e, const jschar* value)
+{
+    switch (e)
+    {
+    case SetJsval:
+        JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+        valTemp.setString(jsString);
+        break;
+    case SetRval:
+        JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+        JS_SET_RVAL(g_cx, g_vp, STRING_TO_JSVAL(jsString));
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+            v.setString(jsString);
             JS_SetProperty(g_cx, jsObj, "Value", v);
         }
         break;
@@ -432,7 +478,7 @@ void setVector2(eSetType e, float x, float y)
             JS_SET_RVAL(g_cx, g_vp, val);
         }
         break;
-    case UpdateARGVRefOut:
+    case SetArgRef:
         {
             int i = currIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -474,7 +520,7 @@ void setVector3(eSetType e, float x, float y, float z)
             JS_SET_RVAL(g_cx, g_vp, val);
         }
         break;
-    case UpdateARGVRefOut:
+    case SetArgRef:
         {
             int i = currIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -489,11 +535,13 @@ void setVector3(eSetType e, float x, float y, float z)
 }
 void setObject(eSetType e, OBJID id)
 {
+    // TODO
+    // Check: when id == 0
     JS::RootedObject jsObj(g_cx, ID2JSObj(id));
     switch (e)
     {
     case SetJsval:
-        pvalTemp->setObjectOrNull(jsObj);
+        valTemp.setObjectOrNull(jsObj);
         break;
     case SetRval:
         {
@@ -502,7 +550,7 @@ void setObject(eSetType e, OBJID id)
             JS_SET_RVAL(g_cx, g_vp, val);
         }
         break;
-    case UpdateARGVRefOut:
+    case SetArgRef:
         {
             int i = currIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
@@ -518,6 +566,71 @@ void setObject(eSetType e, OBJID id)
 void setArray(eSetType e)
 {
 
+}
+
+MOZ_API bool isVector2( int i )
+{
+    JS::Value& val = JS_ARGV(cx, vp)[i];
+    if (val.isObject())
+    {
+        JS::RootedObject obj = val.toObject();
+        JS::RootedValue v(g_cx);
+        JS_GetProperty(g_cx, obj, "_fullname", &v);
+        if (v->isString())
+        {
+            // TODO fix memory leak
+            JS::RootedString jsStr = v->toString();
+            const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
+            return strcmp(str, "UnityEngine.Vector2") == 0;
+        }
+    }
+    return false;
+}
+
+MOZ_API bool isVector3( int i )
+{
+    JS::Value& val = JS_ARGV(cx, vp)[i];
+    if (val.isObject())
+    {
+        JS::RootedObject obj = val.toObject();
+        JS::RootedValue v(g_cx);
+        JS_GetProperty(g_cx, obj, "_fullname", &v);
+        if (v->isString())
+        {
+            // TODO fix memory leak
+            JS::RootedString jsStr = v->toString();
+            const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
+            return strcmp(str, "UnityEngine.Vector3") == 0;
+        }
+    }
+    return false;
+}
+
+MOZ_API void moveTempVal2Arr( int i )
+{
+    moveVal2Arr(i, *pvalTemp);
+}
+
+extern JS::Heap<JS::Value>* arrHeapObj;
+MOZ_API bool callFunction(OBJID jsObjID, const char* functionName, int argCount)
+{
+    JS::RootedObject jsObj = ID2JSObj(jsObjID);
+    if (jsObj == 0)
+        return false;
+
+    // TODO 清空 arrHeapObj
+    if (argCount == 0)
+    {
+        return JS_CallFunctionName(g_cx, jsObj, functionName, 0/* argc */, 0/* argv */, &valFunRet);
+    }
+    else
+    {
+        JS::Value* array = new JS::Value[argCount];
+        for (int i = 0; i < argCount; i++)
+            array[i] = arrHeapObj[i];
+
+        return JS_CallFunctionName(g_cx, jsObj, functionName, argCount, array, &valFunRet);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////
