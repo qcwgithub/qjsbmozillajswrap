@@ -10,6 +10,8 @@
 
 #include "jsapi.h"
 #include <vector>
+#include <map>
+using namespace std;
 
 #ifdef _WINDOWS
 #if defined(MOZ_JSWRAP_COMPILATION)
@@ -27,8 +29,9 @@ extern JSObject* g_global;
 
 // C# 获取JS对象就是获取一个OBJID
 typedef int OBJID;
+typedef int FUNCTIONID;
 
-struct MyHeapObj
+struct stHeapObj
 {
     JS::Heap<JSObject*>* heapJSObj;
     JSObject* jsObj; // old obj, just remember here
@@ -37,9 +40,12 @@ struct MyHeapObj
     JSObject* nativeObj;
 };
 
-extern "C"{
-	MOZ_API int JSh_GetErroReportLineNo(JSErrorReport* report);
-	MOZ_API const char* JSh_GetErroReportFileName(JSErrorReport* report);
+extern "C"
+{
+	MOZ_API int getErroReportLineNo(JSErrorReport* report);
+    MOZ_API const char* getErroReportFileName(JSErrorReport* report);
+    MOZ_API void reportError(const char* err);
+
 	MOZ_API JSObject* JSh_NewArrayObject(JSContext *cx, int length, jsval *vector);
 	MOZ_API bool JSh_IsArrayObject(JSContext *cx, JSObject *obj);
 	// return -1: fail
@@ -75,36 +81,18 @@ extern "C"{
 
 	////////////////////////////////////////////////////////////////////////////////////
 	// debugger api
-	MOZ_API void JSh_EnableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port);
-	MOZ_API void JSh_UpdateDebugger();
-    MOZ_API void JSh_CleanupDebugger();
+
+	MOZ_API void enableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port);
+	MOZ_API void updateDebugger();
+    MOZ_API void cleanupDebugger();
+
     // some useful api
     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
 
-
-    // storeJSObject 将 jsObj 和 nativeObj 表示的类对象存储起来，返回 ID
-    //
-    OBJID storeJSObject(JS::HandleObject jsObj, JS::HandleObject nativeObj);
-
-    //
-    // 根据 nativeObj 查找 ID
-    // 
-    OBJID jsObj2ID(JS::HandleObject nativeObj);
-    JSObject* ID2JSObj(OBJID id);
-    bool deleteJSObject(OBJID id);
-
-    MOZ_API void moveVal2Arr(int i, JS::HandleValue val);
-    void clearArrObjectVal();
-    MOZ_API void removeHeapMapVal(int index);
-    MOZ_API int moveVal2HeapMap();
-    MOZ_API bool moveValFromMap2Arr(int iMap, int iArr);
-    MOZ_API bool addObjectRoot(OBJID id);
-    MOZ_API bool removeObjectRoot(OBJID id);
     MOZ_API bool setProperty(OBJID id, const char* name, int iMap);
+
     MOZ_API void gc();
-
-
 
     enum eGetType
     {
@@ -158,7 +146,10 @@ extern "C"{
     void val2Vector3(JS::RootedValue* pval);
     MOZ_API bool getVector3(eGetType e);
     MOZ_API OBJID getObject(eGetType e);
+    MOZ_API bool isFunction(eGetType e);
+    MOZ_API int getFunction(eGetType e);
 
+    MOZ_API void setUndefined(eSetType e);
     MOZ_API void setChar    (eSetType e, short v);
     MOZ_API void setSByte   (eSetType e, char v);
     MOZ_API void setByte    (eSetType e, unsigned char v);
@@ -186,22 +177,80 @@ extern "C"{
     MOZ_API void moveTempVal2Arr( int i );
 
     MOZ_API bool callFunctionName(OBJID jsObjID, const char* functionName, int argCount);
+    MOZ_API bool addObjectRoot(int id);
+    MOZ_API bool removeObjectRoot(int id);
+    MOZ_API bool addValueRoot(int id);
+    MOZ_API bool removeValueRoot(int id);
 
     MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
     /////////////////////////////////////////////////////////////////////
 
     MOZ_API bool evaluate(const char* ascii, size_t length, const char* filename);
     MOZ_API void setRvalBool(jsval* vp, bool v);
-    MOZ_API void reportError(const char* err);
 
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req);
     MOZ_API void ShutdownJSEngine();
     MOZ_API OBJID NewJSClassObject(char* name);
     MOZ_API bool RemoveJSClassObject(OBJID odjID);
     MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName);
-    MOZ_API JSContext* GetContext();
-    MOZ_API JSObject* GetGlobal();
-    MOZ_API JSRuntime* GetRuntime();
 }
+
+
+class objMap
+{
+    static map<OBJID, stHeapObj> mMap;
+    static OBJID lastID;
+
+public:
+    static OBJID add(JS::HandleObject jsObj, JS::HandleObject nativeObj);
+    static bool remove(OBJID id);
+    static OBJID jsObj2ID(JS::HandleObject nativeObj);
+    static JSObject* id2JSObj(OBJID id);
+};
+
+class valueArr
+{
+public:
+    static JS::Heap<JS::Value>* arr;
+private:
+    static int size;
+    static int lastIndex;
+    static JS::Heap<JS::Value>* makeSureArrHeapObj(int index);
+
+public:
+    static void add(int i, JS::HandleValue val);
+    static void clear();
+};
+
+class valueMap
+{
+    // TODO 所有存在这里的都要立即删除
+    // （不一定）
+    static std::map<int, JS::Heap<JS::Value>* > mMap;
+    static int index;
+public:
+    static int add(JS::HandleValue val);
+    static int addFunction(JS::HandleValue val);
+    static bool get(int i, JS::Value* pVal);
+    static void remove( int index );
+    static bool moveFromMap2Arr(int iMap, int iArr);
+};
+
+class objRoot
+{
+    static std::map<OBJID, JSObject**> mapObjectRoot;
+public:
+    static bool add( OBJID id );
+    static bool remove( OBJID id );
+};
+
+class valueRoot
+{
+    static std::map<int, JS::Value*> mMap;
+    static int index;
+public:
+    static int add(JS::HandleValue val);
+    static bool remove(int i);
+};
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__

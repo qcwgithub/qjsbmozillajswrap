@@ -17,7 +17,9 @@
             'defines': ['MOZ_JSWRAP_COMPILATION'],
             'sources': [
                 '<(source_path)/mozjswrap.cpp',
-                '<(source_path)/mozjswrap.h'
+                '<(source_path)/mozjswrap.h',
+                '<(source_path)/callstack.cpp',
+                '<(source_path)/storage.cpp',
             ],
             'conditions': 
             [
