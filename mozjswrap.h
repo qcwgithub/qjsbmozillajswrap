@@ -121,7 +121,7 @@ extern "C"{
     };
 
     typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
-    bool JSCall(JSContext *cx, int argc, JS::Value *vp);
+    bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
     MOZ_API int getCurrIndex();
     MOZ_API void setCurIndex(int i);

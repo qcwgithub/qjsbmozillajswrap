@@ -10,6 +10,10 @@
 #include "js/OldDebugAPI.h"
 #endif
 
+
+#include <map>
+using namespace std;
+
 //
 // memory for marshaling
 //
@@ -346,36 +350,6 @@ void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file)
 MOZ_API void JSh_DumpBacktrace( JSContext* cx ) {}
 #endif
 
-
-//
-// some useful function
-//
-MOZ_API PPV* JSh_NewPPointer(PPV pValue) 
-{
-    PPV* p = new PPV;
-    *p = pValue;
-    return p;
-}
-MOZ_API void JSh_DelPPointer(PPV* p)
-{
-    if (p)
-        delete p;
-}
-MOZ_API void JSh_SetPPointer(PPV* p, PPV pValue)
-{
-    if (p) {
-        *p = pValue;
-    }
-}
-
-MOZ_API PPV JSh_GetPPointer(PPV* p)
-{
-    if (p) {
-        return *p;
-    }
-    return 0;
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct SplitUtil 
@@ -466,7 +440,7 @@ MOZ_API bool RemoveJSClassObject(OBJID odjID)
 }
 MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
 {
-    JS::RootedObject obj = ID2JSObj(objID);
+    JS::RootedObject obj(g_cx, ID2JSObj(objID));
     if (obj == 0)
         return false;
 
@@ -476,7 +450,7 @@ MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
     if (val.isNullOrUndefined())
         return false;
 
-    if (!JS_ConvertValue(cx, val, JSTYPE_FUNCTION, &val))
+    if (!JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &val))
         return false;
     return true;
 }
@@ -521,9 +495,9 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req)
     // register CS
     //
     JSClass* jsClass = JSh_NewClass("CS", 0/* flag */, 0/* finalizer */);
-    JS::RootedObject CS_obj = JSh_InitClass(cx, global, jsClass);
+    JS::RootedObject CS_obj(g_cx, JSh_InitClass(cx, global, jsClass));
     JS_DefineFunction(cx, CS_obj, "Call", JSCall, 0/* narg */, 0);
-    JS_DefineFunction(cx, CS_obj, "require", csEntry, 0/* narg */, 0);
+    // JS_DefineFunction(cx, CS_obj, "require", csEntry, 0/* narg */, 0);
 
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
 
@@ -561,12 +535,6 @@ MOZ_API JSRuntime* GetRuntime()
 {
 	return g_rt;
 }
-
-
-#include "heapObjStorage.h"
-
-#include <map>
-using namespace std;
 
 map<OBJID, MyHeapObj> mapObjs;
 OBJID objID = 1; // starts from 1, 0 means nothing
@@ -649,7 +617,7 @@ JS::Heap<JS::Value>* makeSureArrHeapObj(int index)
         {
             int N = min(oldS - 1, index);
             for (int i = 0; i < N; i++)
-                arr[i] = oldS[i];
+                arr[i] = arrHeapObj[i];
         }
         arrHeapObj = arr;
     }
@@ -667,9 +635,10 @@ void clearArrObjectVal()
     int& index = arrHeapObjLastIndex;
     if (index >= 0)
     {
+        JS::RootedValue val(g_cx);
         for (int i = 0; i <= index; i++)
         {
-            arrHeapObj[i] = 0;
+            arrHeapObj[i] = val;
         }
         index = -1;
     }
@@ -717,6 +686,8 @@ MOZ_API void removeHeapMapVal( int index )
         mapHeapVal.erase(it);
 }
 
+
+extern JS::Heap<JS::Value> valTemp;
 MOZ_API int moveVal2HeapMap()
 {
     mapHeapVal[mapHeapVal_i] = valTemp;
@@ -772,7 +743,7 @@ JS::Heap<JS::Value> valFunRet;
 JS::Heap<JS::Value> valTemp;
 
 CSEntry csEntry = 0; 
-bool JSCall(JSContext *cx, int argc, JS::Value *vp)
+bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
 {
     g_vp = vp;
     g_argc = argc;
@@ -943,7 +914,8 @@ const jschar* getString(eGetType e) {
         break;
     case GetJSFunRet:
         {
-            ret = val2String(&valFunRet);
+            JS::RootedValue val(g_cx, valFunRet);
+            ret = val2String(&val);
         }
         break;
     }
@@ -1015,7 +987,8 @@ bool getVector2(eGetType e)
         break;
     case GetJSFunRet:
         {
-            val2Vector2(&valFunRet);
+            JS::RootedValue val(g_cx, valFunRet);
+            val2Vector2(&val);
         }
         break;
     }
@@ -1047,7 +1020,8 @@ bool getVector3(eGetType e)
         break;
     case GetJSFunRet:
         {
-            val2Vector3(&valFunRet);
+            JS::RootedValue val(g_cx, valFunRet);
+            val2Vector3(&val);
         }
         break;
     }
@@ -1184,12 +1158,16 @@ void setString(eSetType e, const jschar* value)
     switch (e)
     {
     case SetJsval:
-        JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
-        valTemp.setString(jsString);
+        {
+            JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
+            valTemp.setString(jsString);
+        }
         break;
     case SetRval:
-        JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
-        JS_SET_RVAL(g_cx, g_vp, STRING_TO_JSVAL(jsString));
+        {
+            JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
+            JS_SET_RVAL(g_cx, g_vp, STRING_TO_JSVAL(jsString));
+        }
         break;
     case SetArgRef:
         {
@@ -1198,7 +1176,7 @@ void setString(eSetType e, const jschar* value)
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
             JS::RootedValue v(g_cx);
-            JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+            JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
             v.setString(jsString);
             JS_SetProperty(g_cx, jsObj, "Value", v);
         }
@@ -1222,7 +1200,10 @@ void setVector2(eSetType e, float x, float y)
     switch (e)
     {
     case SetJsval:
-        valSetVector2(pvalTemp, x, y);
+        {
+            JS::RootedValue val(g_cx, valTemp);
+            valSetVector2(&val, x, y);
+        }
         break;
     case SetRval:
         {
@@ -1264,7 +1245,10 @@ void setVector3(eSetType e, float x, float y, float z)
     switch (e)
     {
     case SetJsval:
-        valSetVector3(pvalTemp, x, y, z);
+        {
+            JS::RootedValue val(g_cx, valTemp);
+            valSetVector3(&val, x, y, z);
+        }
         break;
     case SetRval:
         {
@@ -1322,7 +1306,8 @@ void setArray(eSetType e, int count)
     JS::RootedObject arrObj(g_cx, _t);
     for (int i = 0; i < count; i++)
     {
-        JS_SetElement(g_cx, arrObj, i, &arrHeapObj[i]);
+        JS::RootedValue val(g_cx, arrHeapObj[i]);
+        JS_SetElement(g_cx, arrObj, i, &val);
     }
 
     // TODO clear arrHeapObj
@@ -1355,16 +1340,16 @@ void setArray(eSetType e, int count)
 
 MOZ_API bool isVector2( int i )
 {
-    JS::Value& val = JS_ARGV(cx, vp)[i];
+    JS::RootedValue val(g_cx, JS_ARGV(g_cx, g_vp)[i]);
     if (val.isObject())
     {
-        JS::RootedObject obj = val.toObject();
+        JS::RootedObject obj(g_cx, &val.toObject());
         JS::RootedValue v(g_cx);
         JS_GetProperty(g_cx, obj, "_fullname", &v);
-        if (v->isString())
+        if (v.isString())
         {
             // TODO fix memory leak
-            JS::RootedString jsStr = v->toString();
+            JS::RootedString jsStr(g_cx, v.toString());
             const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
             return strcmp(str, "UnityEngine.Vector2") == 0;
         }
@@ -1374,16 +1359,16 @@ MOZ_API bool isVector2( int i )
 
 MOZ_API bool isVector3( int i )
 {
-    JS::Value& val = JS_ARGV(cx, vp)[i];
+    JS::RootedValue val(g_cx, JS_ARGV(g_cx, g_vp)[i]);
     if (val.isObject())
     {
-        JS::RootedObject obj = val.toObject();
+        JS::RootedObject obj(g_cx, &val.toObject());
         JS::RootedValue v(g_cx);
         JS_GetProperty(g_cx, obj, "_fullname", &v);
-        if (v->isString())
+        if (v.isString())
         {
             // TODO fix memory leak
-            JS::RootedString jsStr = v->toString();
+            JS::RootedString jsStr(g_cx,  v.toString());
             const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
             return strcmp(str, "UnityEngine.Vector3") == 0;
         }
@@ -1393,7 +1378,8 @@ MOZ_API bool isVector3( int i )
 
 MOZ_API void moveTempVal2Arr( int i )
 {
-    moveVal2Arr(i, *valTemp);
+    JS::RootedValue val(g_cx, valTemp);
+    moveVal2Arr(i, val);
 }
 
 extern JS::Heap<JS::Value>* arrHeapObj;
@@ -1406,7 +1392,11 @@ MOZ_API bool callFunctionName(OBJID jsObjID, const char* functionName, int argCo
     // TODO clear arrHeapObj
     if (argCount == 0)
     {
-        return JS_CallFunctionName(g_cx, jsObj, functionName, 0/* argc */, 0/* argv */, &valFunRet);
+        // JS::RootedValue val(g_cx);
+        jsval val;
+        bool ret = JS_CallFunctionName(g_cx, jsObj, functionName, 0/* argc */, 0/* argv */, &val);
+        valFunRet = val;
+        return ret;
     }
     else
     {
@@ -1414,20 +1404,24 @@ MOZ_API bool callFunctionName(OBJID jsObjID, const char* functionName, int argCo
         for (int i = 0; i < argCount; i++)
             array[i] = arrHeapObj[i];
 
-        return JS_CallFunctionName(g_cx, jsObj, functionName, argCount, array, &valFunRet);
+        jsval val;
+        bool ret = JS_CallFunctionName(g_cx, jsObj, functionName, argCount, array, &val);
+        valFunRet = val;
+        return ret;
     }
 }
 
 MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
 {
     int lineno = 1;
-    JS::CompileOptions options(cx);
+    JS::CompileOptions options(g_cx);
     options.setUTF8(true).setFileAndLine(filename, lineno);
-    JS::RootedScript jsScript = JS_CompileScript(g_cx, JS::RootedObject(g_cx, g_global), ascii, length, options);
+    JS::RootedScript jsScript(g_cx, JS_CompileScript(g_cx, JS::RootedObject(g_cx, g_global), ascii, length, options));
     if (jsScript == 0)
         return false;
 
-    JS::RootedValue val(g_cx);
+    //JS::RootedValue val(g_cx);
+    jsval val;
     if (!JS_ExecuteScript(g_cx, g_global, jsScript, &val))
         return false;
 
@@ -1435,7 +1429,7 @@ MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
 
     // TODO add script root
     // 需要吗？好像不需要吧
-    JS_AddNamedScriptRoot(g_cx, &jsScript, filename);
+    //JS_AddNamedScriptRoot(g_cx, &jsScript, filename);
 
     return true;
 }
