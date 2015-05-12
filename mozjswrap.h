@@ -35,9 +35,6 @@ struct stHeapObj
 {
     JS::Heap<JSObject*>* heapJSObj;
     //JSObject* jsObj; // old obj, just remember here
-
-    JS::Heap<JSObject*>* heapNativeObj;
-    //JSObject* nativeObj;
 };
 
 extern "C"
@@ -65,9 +62,8 @@ extern "C"
 	////////////////////////////////////////////////////////////////////////////////////
 	// new a class and assign it a class
 
-	MOZ_API JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp);
-	MOZ_API JSObject* JSh_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto, JSObject *parent);
-	MOZ_API JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp);    
+// 	MOZ_API JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp);
+// 	MOZ_API JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp);    
     MOZ_API unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i);
 	MOZ_API bool JSh_ArgvFunctionValue(JSContext* cx, jsval* vp, int i, jsval* pval);
 
@@ -209,9 +205,9 @@ class objMap
     static OBJID lastID;
 
 public:
-    static OBJID add(JS::HandleObject jsObj, JS::HandleObject nativeObj);
+    static OBJID add(JS::HandleObject jsObj);
     static bool remove(OBJID id);
-    static OBJID jsObj2ID(JS::HandleObject nativeObj);
+    static OBJID jsObj2ID(JS::HandleObject jsObj);
     static JSObject* id2JSObj(OBJID id);
 };
 

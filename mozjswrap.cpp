@@ -165,38 +165,35 @@ JSObject* JSh_InitClass(JSContext* cx, JSObject* glob, JSClass* jsClass)
 ////////////////////////////////////////////////////////////////////////////////////
 // new a class and assign it a class proto
 
-JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp)
-{
-	JS::RootedValue nsval(cx);
-	JS_GetProperty(cx, glob, className, &nsval);
-	if (nsval.isObject())
-	{
-		JS::RootedObject jsObject(cx, &nsval.toObject());
-		JS_GetProperty(cx, jsObject, "prototype", &nsval);
-		if (nsval.isObject())
-		{
-			jsObject = &nsval.toObject();
-			JSClass* jsClass = &qiucw_class;
-			jsClass->finalize = finalizeOp;
-			JSObject* obj = JS_NewObject(cx, jsClass, jsObject/* proto */, 0/* parentProto */);
-			return obj;
-		}
-	}
-	return 0;
-}
+// JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp)
+// {
+// 	JS::RootedValue nsval(cx);
+// 	JS_GetProperty(cx, glob, className, &nsval);
+// 	if (nsval.isObject())
+// 	{
+// 		JS::RootedObject jsObject(cx, &nsval.toObject());
+// 		JS_GetProperty(cx, jsObject, "prototype", &nsval);
+// 		if (nsval.isObject())
+// 		{
+// 			jsObject = &nsval.toObject();
+// 			JSClass* jsClass = &qiucw_class;
+// 			jsClass->finalize = finalizeOp;
+// 			JSObject* obj = JS_NewObject(cx, jsClass, jsObject/* proto */, 0/* parentProto */);
+// 			return obj;
+// 		}
+// 	}
+// 	return 0;
+// }
 
-JSObject* JSh_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto, JSObject *parent)
-{
-	return JS_NewObject(cx, clasp, proto, parent);
-}
 
-JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp)
-{
-	JSClass* jsClass = &qiucw_class;
-	jsClass->finalize = finalizeOp;
-	JSObject* obj = JS_NewObject(cx, jsClass, 0/* proto */, 0/* parentProto */);
-	return obj;
-}
+// 
+// JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp)
+// {
+// 	JSClass* jsClass = &qiucw_class;
+// 	jsClass->finalize = finalizeOp;
+// 	JSObject* obj = JS_NewObject(cx, jsClass, 0/* proto */, 0/* parentProto */);
+// 	return obj;
+// }
 
 unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i)
 {
@@ -393,11 +390,40 @@ MOZ_API JSObject* GetJSTableByName(char* name)
     return obj;
 }
 
+JSObject* getObjCtorPrototype(JS::HandleObject obj)
+{
+	JS::RootedValue val(g_cx);
+	JS_GetProperty(g_cx, obj, "ctor", &val);
+	if (val.isObject())
+	{
+		JS_GetProperty(g_cx, &val.toObject(), "prototype", &val);
+		if (val.isObject())
+		{
+			return &val.toObject();
+		}
+	}
+	return 0;
+}
+
+JSObject* newObject(JS::HandleObject prototypeObj, JSFinalizeOp finalizeOp)
+{
+	JSClass* jsClass = &qiucw_class;
+	jsClass->finalize = finalizeOp;
+	JSObject* obj = JS_NewObject(g_cx, jsClass, prototypeObj/* proto */, 0/* parentProto */);
+	return obj;
+}
+
 //
 // 创建一个JS类对象
-// 返回jsObj, nativeObj
+// 返回jsObj
 //
 // TODO finalizer ?
+//
+// 假设 name = GameObject
+// 做的事情其实就是  new GameObject.ctor()
+// 并把这个对象存起来  返回ID
+// 
+//
 MOZ_API OBJID NewJSClassObject(char* name)
 {
 	JS::RootedObject _t(g_cx);
@@ -405,27 +431,23 @@ MOZ_API OBJID NewJSClassObject(char* name)
     if (_t = GetJSTableByName(name))
     {
         JS::RootedObject tableObj(g_cx, _t);
-        if (_t = JSh_NewObjectAsClass(g_cx, tableObj, "ctor", 0))
-        {
-            JS::RootedObject jsObj(g_cx, _t);
-            JS::RootedObject nativeObj(g_cx, JSh_NewMyClass(g_cx, g_finalizer));
-            JS::RootedValue val(g_cx);
-            val.setObject(*nativeObj);
-            JS_SetProperty(g_cx, jsObj, "__nativeObj", val);
+		JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
+		JS::RootedObject jsObj(g_cx, newObject(prototypeObj, g_finalizer));
 
-            OBJID id = objMap::add(jsObj, nativeObj);
-            return id;
+		OBJID id = objMap::add(jsObj);
+		return id;
+
+//         if (_t = JSh_NewObjectAsClass(g_cx, tableObj, "ctor", 0))
+//         {
+//             JS::RootedObject jsObj(g_cx, _t);
+//             JS::RootedObject nativeObj(g_cx, JSh_NewMyClass(g_cx, g_finalizer));
+//             JS::RootedValue val(g_cx);
+//             val.setObject(*nativeObj);
+//             JS_SetProperty(g_cx, jsObj, "__nativeObj", val);
 // 
-//             *retJSObj = jsObj;
-//             *retNativeObj = nativeObj;
-// 
-//             if (objRef)
-//             {
-//                 val.setObject(*jsObj);
-//                 JS_SetProperty(g_cx, objRef, "Value", val);
-//             }
-//             return true;
-        }
+//             OBJID id = objMap::add(jsObj, nativeObj);
+//             return id;
+//         }
     }
     return 0;
 }
