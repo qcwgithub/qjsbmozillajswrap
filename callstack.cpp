@@ -8,7 +8,7 @@
 JS::Value* g_vp = 0;
 int g_argc = 0;
 // 当前取到第几个参数了
-int currIndex = 0;
+int argIndex = 0;
 // 实际几个参数
 int actualArgc = 0;
 
@@ -34,22 +34,27 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     while (actualArgc > 0 && (JS_ARGV(cx, vp))[actualArgc - 1].isUndefined())
         actualArgc--;
 
-    currIndex = 4;
-    bool ret = csEntry(op, slot, index, isStatic, actualArgc - currIndex);
+    argIndex = 4;
+    bool ret = csEntry(op, slot, index, isStatic, actualArgc - argIndex);
     return ret;
 }
 
-int getCurrIndex()
+int getArgIndex()
 {
-    return currIndex;
+    return argIndex;
 }
 
-void setCurIndex(int i)
+void setArgIndex(int i)
 {
     if (i >= 0 && i < actualArgc)
     {
-        currIndex = i;
+        argIndex = i;
     }
+}
+
+MOZ_API int incArgIndex()
+{
+    return argIndex++;
 }
 
 unsigned int argTag( int i )
@@ -82,7 +87,7 @@ const jschar* val2String(JS::RootedValue* pval)
 
 JS::Value& getVpVal()
 {
-    int i = currIndex++;
+    int i = argIndex++;
     return g_vp[i];
 }
 
@@ -94,14 +99,14 @@ T getNumber(eGetType e)
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             ret = val2Number<T>(val);
         }
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -140,14 +145,14 @@ bool getBoolean(eGetType e) {
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             ret = val.toBoolean();
         }
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -170,14 +175,14 @@ const jschar* getString(eGetType e) {
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             ret = val2String(&val);
         }
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -242,14 +247,14 @@ bool getVector2(eGetType e)
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             val2Vector2(&val);
         }
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -275,14 +280,14 @@ bool getVector3(eGetType e)
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             val2Vector3(&val);
         }
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -309,7 +314,7 @@ OBJID getObject(eGetType e)
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject obj(g_cx, &val.toObject());
             ret = objMap::jsObj2ID(obj);
@@ -317,7 +322,7 @@ OBJID getObject(eGetType e)
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -345,7 +350,7 @@ MOZ_API bool isFunction(eGetType e)
     {
     case GetArg:
         {
-            int i = currIndex; // no ++
+            int i = argIndex; // no ++
             JS::RootedValue val(g_cx, g_vp[i]);
 
             //val->toString()
@@ -360,7 +365,7 @@ MOZ_API bool isFunction(eGetType e)
         break;
     case GetArgRef:
         {
-            int i = currIndex; // no ++
+            int i = argIndex; // no ++
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -392,7 +397,7 @@ MOZ_API int getFunction(eGetType e)
     {
     case GetArg:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
 
             ret = valueMap::addFunction(val);
@@ -400,7 +405,7 @@ MOZ_API int getFunction(eGetType e)
         break;
     case GetArgRef:
         {
-            int i = currIndex++;
+            int i = argIndex++;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -433,7 +438,7 @@ void setNumberI(eSetType e, T value)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -459,7 +464,7 @@ void setNumberF(eSetType e, T value)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -486,7 +491,7 @@ void setUndefined(eSetType e)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -523,7 +528,7 @@ void setBoolean(eSetType e, bool v)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -552,7 +557,7 @@ void setString(eSetType e, const jschar* value)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -595,7 +600,7 @@ void setVector2(eSetType e, float x, float y)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -640,7 +645,7 @@ void setVector3(eSetType e, float x, float y, float z)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -670,7 +675,7 @@ void setObject(eSetType e, OBJID id)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -707,7 +712,7 @@ void setArray(eSetType e, int count)
         break;
     case SetArgRef:
         {
-            int i = currIndex;
+            int i = argIndex;
             JS::RootedValue val(g_cx, g_vp[i]);
             JS::RootedObject jsObj(g_cx, &val.toObject());
 

@@ -11,9 +11,12 @@ OBJID objMap::add(JS::HandleObject jsObj, JS::HandleObject nativeObj)
     stHeapObj st;
     {
         st.heapJSObj = new JS::Heap<JSObject*>(jsObj);
-        st.jsObj = jsObj;
-        st.heapNativeObj = new JS::Heap<JSObject*>(nativeObj);
-        st.nativeObj = nativeObj;
+        //st.jsObj = jsObj;
+        if (nativeObj != 0)
+            st.heapNativeObj = new JS::Heap<JSObject*>(nativeObj);
+        else
+            st.heapNativeObj = 0;
+        //st.nativeObj = nativeObj;
     }
     OBJID id = lastID++;
     mMap[id] = st;
@@ -37,7 +40,9 @@ JSObject* objMap::id2JSObj(OBJID id)
 {
     map<OBJID, stHeapObj>::iterator it = mMap.find(id);
     if (it != mMap.end())
+    {
         return *(it->second.heapJSObj);
+    }
     return 0;
 }
 
@@ -46,21 +51,15 @@ bool objMap::remove(OBJID id)
     map<OBJID, stHeapObj>::iterator it = mMap.find(id);
     if (it != mMap.end())
     {
+        stHeapObj& st = it->second;
+
+        if (st.heapJSObj != 0) delete st.heapJSObj;
+        if (st.heapNativeObj != 0) delete st.heapNativeObj;
+
         mMap.erase(it);
         return true;
     }
     return false;
-    //     map<OBJID, MyHeapObj>::iterator it = mapObjs.begin();
-    //     for (; it != mapObjs.end(); it++)
-    //     {
-    //         if (*(it->second.heapJSObj) == jsObj)
-    //         {
-    // 			delete it->second.heapJSObj;
-    // 			delete it->second.heapNativeObj;
-    //             mapObjs.erase(it);
-    //             return;
-    //         }
-    //     }
 }
 
 // valueArr

@@ -34,10 +34,10 @@ typedef int FUNCTIONID;
 struct stHeapObj
 {
     JS::Heap<JSObject*>* heapJSObj;
-    JSObject* jsObj; // old obj, just remember here
+    //JSObject* jsObj; // old obj, just remember here
 
     JS::Heap<JSObject*>* heapNativeObj;
-    JSObject* nativeObj;
+    //JSObject* nativeObj;
 };
 
 extern "C"
@@ -90,6 +90,8 @@ extern "C"
     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
 
+    // 第1个参数是个id
+    // 因为会调用 setProperty 前面一定是用创建 JS 类的对象
     MOZ_API bool setProperty(OBJID id, const char* name, int iMap);
 
     MOZ_API void gc();
@@ -111,8 +113,9 @@ extern "C"
     typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
     bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
-    MOZ_API int getCurrIndex();
-    MOZ_API void setCurIndex(int i);
+    MOZ_API int getArgIndex();
+    MOZ_API void setArgIndex(int i);
+    MOZ_API int incArgIndex();
 
     unsigned int argTag(int i);
 
@@ -181,6 +184,10 @@ extern "C"
     MOZ_API bool removeObjectRoot(int id);
     MOZ_API bool addValueRoot(int id);
     MOZ_API bool removeValueRoot(int id);
+
+    // 目前仅用于 arg，不够用的话要再加 (GetType e) 参数
+    MOZ_API OBJID addArgObj2Map();
+    MOZ_API void removeObjFromMap(OBJID id);
 
     MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
     /////////////////////////////////////////////////////////////////////
