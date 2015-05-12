@@ -63,94 +63,6 @@ static JSClass qiucw_class =
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-bool JSh_Init(void)
-{
-	return JS_Init();
-}
-void JSh_ShutDown(void)
-{
-	JS_ShutDown();
-}
-JSRuntime* JSh_NewRuntime(uint32_t maxbytes, int useHelperThreads)
-{
-	return JS_NewRuntime(maxbytes, (JSUseHelperThreads)useHelperThreads);
-}
-void JSh_DestroyRuntime(JSRuntime *rt)
-{
-	JS_DestroyRuntime(rt);
-}
-void JSh_SetGCParameter(JSRuntime *rt, int key, uint32_t value)
-{
-	return JS_SetGCParameter(rt, (JSGCParamKey)key, value);
-}
-
-JSContext* JSh_NewContext(JSRuntime *rt, size_t stackChunkSize)
-{
-	return JS_NewContext(rt, stackChunkSize);
-}
-void JSh_DestroyContext(JSContext *cx)
-{
-	JS_DestroyContext(cx);
-}
-void JSh_DestroyContextNoGC(JSContext *cx)
-{
-	JS_DestroyContextNoGC(cx);
-}
-
-JSErrorReporter JSh_SetErrorReporter(JSContext *cx, JSErrorReporter er)
-{
-	return JS_SetErrorReporter(cx, er);
-}
-void* JSh_GetContextPrivate(JSContext *cx)
-{
-	return JS_GetContextPrivate(cx);
-}
-void JSh_SetContextPrivate(JSContext *cx, void *data)
-{
-	JS_SetContextPrivate(cx, data);
-}
-void* JSh_GetPrivate(JSObject *obj)
-{
-	return JS_GetPrivate(obj);
-}
-void JSh_SetPrivate(JSObject *obj, void *data)
-{
-	JS_SetPrivate(obj, data);
-}
-JSObject* JSh_GetParent(JSObject *obj)
-{
-	return JS_GetParent(obj);
-}
-bool JSh_SetParent(JSContext *cx, JSObject *obj, JSObject *parent)
-{
-	return JS_SetParent(cx, obj, parent);
-}
-
-JSObject* JSh_NewGlobalObject(JSContext *cx, int hookOption)
-{
-	JS::CompartmentOptions options;
-	options.setVersion(JSVERSION_LATEST);
-
-	return JS_NewGlobalObject(cx, &global_class, 0/*principals*/, (JS::OnNewGlobalHookOption)hookOption, options);
-}
-
-bool JSh_InitStandardClasses(JSContext *cx, JSObject *obj)
-{
-	return JS_InitStandardClasses(cx, obj);
-}
-JSObject* JSh_InitReflect(JSContext *cx, JSObject *global)
-{
-	return JS_InitReflect(cx, global);
-}
-JSFunction* JSh_DefineFunction(JSContext *cx, JSObject *obj, const char *name, JSNative call, unsigned nargs, unsigned attrs)
-{
-	return JS_DefineFunction(cx, obj, name, call, nargs, attrs);
-}
-
-void JSh_ReportError(JSContext* cx, const char* sErr)
-{
-    JS_ReportError(cx, "%s", sErr);
-}
 int JSh_GetErroReportLineNo(JSErrorReport* report)
 {
 	return report->lineno;
@@ -250,22 +162,6 @@ JSObject* JSh_InitClass(JSContext* cx, JSObject* glob, JSClass* jsClass)
 	return obj;
 }
 
-void JSh_GC(JSRuntime *rt)
-{
-	JS_GC(rt);
-}
-void JSh_MaybeGC(JSContext *cx)
-{
-	JS_MaybeGC(cx);
-}
-bool JSh_EvaluateScript(JSContext *cx, JSObject *obj,
-	const char *bytes, unsigned length,
-	const char *filename, unsigned lineno,
-	jsval *rval)
-{
-	return JS_EvaluateScript(cx, obj, bytes, length, filename, lineno, rval);
-}
-
 ////////////////////////////////////////////////////////////////////////////////////
 // new a class and assign it a class proto
 
@@ -358,60 +254,6 @@ bool JSh_ArgvFunctionValue(JSContext* cx, jsval* vp, int i, jsval* pval)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
-// returns
-
-void JSh_SetRvalBool(JSContext* cx, jsval* vp, bool value) { JS_SET_RVAL(cx, vp, BOOLEAN_TO_JSVAL(value)); }
-void JSh_SetRvalDouble(JSContext* cx, jsval* vp, double value) { JS_SET_RVAL(cx, vp, DOUBLE_TO_JSVAL(value)); }
-void JSh_SetRvalInt(JSContext* cx, jsval* vp, int value) { JS_SET_RVAL(cx, vp, INT_TO_JSVAL(value)); }
-void JSh_SetRvalUInt(JSContext* cx, jsval* vp, unsigned int value) { JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(value)); }
-void JSh_SetRvalString(JSContext* cx, jsval* vp, const jschar* value) {
-	JSString* jsString = JS_NewUCStringCopyZ(cx, value);
-	JS_SET_RVAL(cx, vp, STRING_TO_JSVAL(jsString));
-}
-void JSh_SetRvalObject(JSContext* cx, jsval* vp, JSObject* value) { JS_SET_RVAL(cx, vp, OBJECT_TO_JSVAL(value)); }
-void JSh_SetRvalUndefined(JSContext* cx, jsval* vp) { jsval v; v.setUndefined(); JS_SET_RVAL(cx, vp, v); }
-void JSh_SetRvalJSVAL(JSContext* cx, jsval* vp, jsval* value) { JS_SET_RVAL(cx, vp, *value); }
-
-////////////////////////////////////////////////////////////////////////////////////
-// generate jsval
-
-void JSh_SetJsvalBool(jsval* vp, bool value)  { *vp = BOOLEAN_TO_JSVAL(value); }
-void JSh_SetJsvalDouble(jsval* vp, double value) { *vp = DOUBLE_TO_JSVAL(value); }
-void JSh_SetJsvalInt(jsval* vp, int value) { *vp = INT_TO_JSVAL(value); }
-void JSh_SetJsvalUInt(jsval* vp, unsigned int value) { *vp = UINT_TO_JSVAL(value); }
-void JSh_SetJsvalString(JSContext* cx, jsval* vp, const jschar* value) {
-	JSString* jsString = JS_NewUCStringCopyZ(cx, value);
-	*vp = STRING_TO_JSVAL(jsString);
-}
-void JSh_SetJsvalObject(jsval* vp, JSObject* value) { *vp = OBJECT_TO_JSVAL(value); }
-void JSh_SetJsvalUndefined(jsval* vp) { vp->setUndefined(); }
-
-bool JSh_GetJsvalBool(jsval* vp)  { return vp->toBoolean(); }
-double JSh_GetJsvalDouble(jsval* vp) { return vp->toDouble(); }
-int JSh_GetJsvalInt(jsval* vp) { return vp->toInt32(); }
-unsigned int JSh_GetJsvalUInt(jsval* vp) { return vp->toInt32(); }
-const jschar* JSh_GetJsvalString(JSContext* cx, jsval* vp) {
-	JSString* jsStr = vp->toString();
-    return getMarshalStringFromJSString(cx, jsStr);
-}
-JSObject* JSh_GetJsvalObject(jsval* vp) { return vp->toObjectOrNull(); }
-
-
-JSCompartment* JSh_EnterCompartment(JSContext *cx, JSObject *target)
-{
-	return JS_EnterCompartment(cx, target);
-}
-void JSh_LeaveCompartment(JSContext *cx, JSCompartment *oldCompartment)
-{
-	JS_LeaveCompartment(cx, oldCompartment);
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-
-void  JSh_SetTrustedPrincipals(JSRuntime *rt, const JSPrincipals *prin)
-{
-	JS_SetTrustedPrincipals(rt, prin);
-}
 JSScript* JSh_CompileScript(JSContext *cx, JSObject* global, const char *ascii, size_t length, const char* filename, size_t lineno)
 {
 	JS::CompileOptions options(cx);
@@ -449,89 +291,6 @@ bool JSh_GetFunctionValue(JSContext* cx, JSObject* obj, const char* name, jsval*
 	*val = ns;
 	return true;
 }
-bool JSh_ObjectIsFunction(JSContext *cx, JSObject *obj)
-{
-	return JS_ObjectIsFunction(cx, obj);
-}
-
-bool JSh_CallFunction(JSContext *cx, JSObject *obj, JSFunction *fun, unsigned argc, jsval *argv, jsval *rval)
-{
-	return JS_CallFunction(cx, obj, fun, argc, argv, rval);
-}
-bool JSh_CallFunctionName(JSContext *cx, JSObject *obj, const char *name, unsigned argc, jsval *argv, jsval *rval)
-{
-	return JS_CallFunctionName(cx, obj, name, argc, argv, rval);
-}
-bool JSh_CallFunctionValue(JSContext *cx, JSObject *obj, jsval* fval, unsigned argc, jsval *argv, jsval *rval)
-{
-	return JS_CallFunctionValue(cx, obj, *fval, argc, argv, rval);
-}
-
-bool JSh_IsNative(JSObject *obj)
-{
-	return JS_IsNative(obj);
-}
-JSRuntime* JSh_GetObjectRuntime(JSObject *obj)
-{
-	return JS_GetObjectRuntime(obj);
-}
-JSObject* JSh_NewObjectWithGivenProto(JSContext *cx, const JSClass *clasp, JSObject *proto, JSObject *parent)
-{
-	return JS_NewObjectWithGivenProto(cx, clasp, proto, parent);
-}
-bool JSh_DeepFreezeObject(JSContext *cx, JSObject *obj)
-{
-	return JS_DeepFreezeObject(cx, obj);
-}
-bool JSh_FreezeObject(JSContext *cx, JSObject *obj)
-{
-	return JS_FreezeObject(cx, obj);
-}
-
-
-bool JSh_StringHasBeenInterned(JSContext *cx, JSString *str)
-{
-	return JS_StringHasBeenInterned(cx, str);
-}
-
-//      jsid INTERNED_STRING_TO_JSID(JSContext *cx, JSString *str)
-//     {
-//         return INTERNED_STRING_TO_JSID(cx, str);
-//     }
-
-// this function compile fail on mac, don't know why
-//      bool JSh_CallOnce(JSCallOnceType *once, JSInitCallback func)
-//     {
-//         return JS_CallOnce(once, func);
-//     }
-int64_t JSh_Now(void)
-{
-	return JS_Now();
-}
-jsval JSh_GetNaNValue(JSContext *cx)
-{
-	return JS_GetNaNValue(cx);
-}
-
-jsval JSh_GetNegativeInfinityValue(JSContext *cx)
-{
-	return JS_GetNegativeInfinityValue(cx);
-}
-
-jsval JSh_GetPositiveInfinityValue(JSContext *cx)
-{
-	return JS_GetPositiveInfinityValue(cx);
-}
-
-jsval JSh_GetEmptyStringValue(JSContext *cx)
-{
-	return JS_GetEmptyStringValue(cx);
-}
-
-JSString* JSh_GetEmptyString(JSRuntime *rt)
-{
-	return JS_GetEmptyString(rt);
-}
 
 //      bool JS_ConvertValue(JSContext *cx, JS::HandleValue v, JSType type, JS::MutableHandleValue vp);
 //      bool JS_ValueToObject(JSContext *cx, JS::HandleValue v, JS::MutableHandleObject objp);
@@ -550,218 +309,12 @@ JSFunction* JSh_ValueToConstructor(JSContext *cx, jsval* v)
 	return JS_ValueToConstructor(cx, hval);
 }
 
-JSString* JSh_ValueToSource(JSContext *cx, jsval v)
-{
-	return JS_ValueToSource(cx, v);
-}
-bool JSh_DoubleIsInt32(double d, int32_t *ip)
-{
-	return JS_DoubleIsInt32(d, ip);
-}
-int32_t JSh_DoubleToInt32(double d)
-{
-	return JS_DoubleToInt32(d);
-}
-
-uint32_t JSh_DoubleToUint32(double d)
-{
-	return JS_DoubleToUint32(d);
-}
-
-JSType JSh_TypeOfValue(JSContext *cx, jsval v)
-{
-	return JS_TypeOfValue(cx, v);
-}
-const char * JSh_GetTypeName(JSContext *cx, JSType type)
-{
-	return JS_GetTypeName(cx, type);
-}
-
-bool JSh_StrictlyEqual(JSContext *cx, jsval v1, jsval v2, bool *equal)
-{
-	return JS_StrictlyEqual(cx, v1, v2, equal);
-}
-bool JSh_LooselyEqual(JSContext *cx, jsval v1, jsval v2, bool *equal)
-{
-	return JS_LooselyEqual(cx, v1, v2, equal);
-}
-bool JSh_SameValue(JSContext *cx, jsval v1, jsval v2, bool *same)
-{
-	return JS_SameValue(cx, v1, v2, same);
-}
-
-bool JSh_IsBuiltinEvalFunction(JSFunction *fun)
-{
-	return JS_IsBuiltinEvalFunction(fun);
-}
-bool JSh_IsBuiltinFunctionConstructor(JSFunction *fun)
-{
-	return JS_IsBuiltinFunctionConstructor(fun);
-}
-void* JSh_GetRuntimePrivate(JSRuntime *rt)
-{
-	return JS_GetRuntimePrivate(rt);
-}
-void JSh_SetRuntimePrivate(JSRuntime *rt, void *data)
-{
-	return JS_SetRuntimePrivate(rt, data);
-}
-void JSh_BeginRequest(JSContext *cx)
-{
-	return JS_BeginRequest(cx);
-}
-void JSh_EndRequest(JSContext *cx)
-{
-	return JS_EndRequest(cx);
-}
-bool JSh_IsInRequest(JSRuntime *rt)
-{
-	return JS_IsInRequest(rt);
-}
-void JSh_SetJitHardening(JSRuntime *rt, bool enabled)
-{
-	return JS_SetJitHardening(rt, enabled);
-}
-const char * JSh_GetImplementationVersion(void)
-{
-	return JS_GetImplementationVersion();
-}
-void JSh_SetDestroyCompartmentCallback(JSRuntime *rt, JSDestroyCompartmentCallback callback)
-{
-	return JS_SetDestroyCompartmentCallback(rt, callback);
-}
-void JSh_SetDestroyZoneCallback(JSRuntime *rt, JSZoneCallback callback)
-{
-	return JS_SetDestroyZoneCallback(rt, callback);
-}
-void JSh_SetSweepZoneCallback(JSRuntime *rt, JSZoneCallback callback)
-{
-	return JS_SetSweepZoneCallback(rt, callback);
-}
-void JSh_SetCompartmentNameCallback(JSRuntime *rt, JSCompartmentNameCallback callback)
-{
-	return JS_SetCompartmentNameCallback(rt, callback);
-}
-void JSh_SetWrapObjectCallbacks(JSRuntime *rt, const JSWrapObjectCallbacks *callbacks)
-{
-	return JS_SetWrapObjectCallbacks(rt, callbacks);
-}
-void JSh_SetCompartmentPrivate(JSCompartment *compartment, void *data)
-{
-	return JS_SetCompartmentPrivate(compartment, data);
-}
-void* JSh_GetCompartmentPrivate(JSCompartment *compartment)
-{
-	return JS_GetCompartmentPrivate(compartment);
-}
-void JSh_SetZoneUserData(JS::Zone *zone, void *data)
-{
-	return JS_SetZoneUserData(zone, data);
-}
-void* JSh_GetZoneUserData(JS::Zone *zone)
-{
-	return JS_GetZoneUserData(zone);
-}
-
-//      bool JS_WrapObject(JSContext *cx, JS::MutableHandleObject objp);
-//      bool JS_WrapValue(JSContext *cx, JS::MutableHandleValue vp);
-//      bool JS_WrapId(JSContext *cx, jsid *idp);
-//      JSObject* JS_TransplantObject(JSContext *cx, JS::Handle<JSObject*> origobj, JS::Handle<JSObject*> target);
-//      bool JS_RefreshCrossCompartmentWrappers(JSContext *cx, JSObject *ob);
-//      void JS_IterateCompartments(JSRuntime *rt, void *data, JSIterateCompartmentCallback compartmentCallback);
-// 
-// 
-//      bool JS_ResolveStandardClass(JSContext *cx, JS::Handle<JSObject*> obj, JS::Handle<jsid> id, bool *resolved);
-//      bool JS_EnumerateStandardClasses(JSContext *cx, JS::Handle<JSObject*> obj);
-//      bool JS_GetClassObject(JSContext *cx, JSObject *obj, JSProtoKey key, JSObject **objp);
-//      bool JS_GetClassPrototype(JSContext *cx, JSProtoKey key, JSObject **objp);
-
-JSProtoKey JSh_IdentifyClassPrototype(JSContext *cx, JSObject *obj)
-{
-	return JS_IdentifyClassPrototype(cx, obj);
-}
-
-JSObject* JSh_ThisObject(JSContext* cx, jsval* vp)
-{
-	return JS_THIS_OBJECT(cx, vp);
-}
-
-bool JSh_AddValueRoot(JSContext *cx, jsval *vp)
-{
-	return JS_AddValueRoot(cx, vp);
-}
-bool JSh_AddStringRoot(JSContext *cx, JSString **rp)
-{
-	return JS_AddStringRoot(cx, rp);
-}
-bool JSh_AddObjectRoot(JSContext *cx, JSObject **rp)
-{
-	return JS_AddObjectRoot(cx, rp);
-}
-bool JSh_AddNamedValueRoot(JSContext *cx, jsval *vp, const char *name)
-{
-	return JS_AddNamedValueRoot(cx, vp, name);
-}
-bool JSh_AddNamedValueRootRT(JSRuntime *rt, jsval *vp, const char *name)
-{
-	return JS_AddNamedValueRootRT(rt, vp, name);
-}
-bool JSh_AddNamedStringRoot(JSContext *cx, JSString **rp, const char *name)
-{
-	return JS_AddNamedStringRoot(cx, rp, name);
-}
-bool JSh_AddNamedObjectRoot(JSContext *cx, JSObject **rp, const char *name)
-{
-	return JS_AddNamedObjectRoot(cx, rp, name);
-}
-bool JSh_AddNamedScriptRoot(JSContext *cx, JSScript **rp, const char *name)
-{
-	return JS_AddNamedScriptRoot(cx, rp, name);
-}
-void JSh_RemoveValueRoot(JSContext *cx, jsval *vp)
-{
-	return JS_RemoveValueRoot(cx, vp);
-}
-void JSh_RemoveStringRoot(JSContext *cx, JSString **rp)
-{
-	return JS_RemoveStringRoot(cx, rp);
-}
-void JSh_RemoveObjectRoot(JSContext *cx, JSObject **rp)
-{
-	return JS_RemoveObjectRoot(cx, rp);
-}
-void JSh_RemoveScriptRoot(JSContext *cx, JSScript **rp)
-{
-	return JS_RemoveScriptRoot(cx, rp);
-}
-void JSh_RemoveValueRootRT(JSRuntime *rt, jsval *vp)
-{
-	return JS_RemoveValueRootRT(rt, vp);
-}
-void JSh_RemoveStringRootRT(JSRuntime *rt, JSString **rp)
-{
-	return JS_RemoveStringRootRT(rt, rp);
-}
-void JSh_RemoveObjectRootRT(JSRuntime *rt, JSObject **rp)
-{
-	return JS_RemoveObjectRootRT(rt, rp);
-}
-void JSh_RemoveScriptRootRT(JSRuntime *rt, JSScript **rp)
-{
-	return JS_RemoveScriptRootRT(rt, rp);
-}
-void JSh_SetNativeStackQuota(JSRuntime *cx, size_t systemCodeStackSize, size_t trustedScriptStackSize, size_t untrustedScriptStackSize)
-{
-	JS_SetNativeStackQuota(cx, systemCodeStackSize, trustedScriptStackSize, untrustedScriptStackSize);
-}
-
-
 #ifdef ENABLE_JS_DEBUG
 ////////////////////////////////////////////////////////////////////////////////////
 // debugger api
-void JSh_EnableDebugger(JSContext* cx, JSObject* global, const char** src_searchpath, int nums, int port){
+void JSh_EnableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port){
 
-	jsdebugger::getInstance()->Start(cx, global, &global_class, src_searchpath, nums, port);
+	jsdebugger::getInstance()->Start(g_cx, g_global, &global_class, src_searchpath, nums, port);
 
 }
 
@@ -782,14 +335,10 @@ void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file)
 {
 	return jsdebugger::getInstance()->compileScript(script_file, global, cx);
 }
-MOZ_API void JSh_DumpBacktrace( JSContext* cx )
-{
-    js_DumpBacktrace(cx);
-}
 #else
 ////////////////////////////////////////////////////////////////////////////////////
 // debugger api
-void JSh_EnableDebugger(JSContext* cx, JSObject* global, const char** src_searchpath, int nums, int port) {}
+void JSh_EnableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port) {}
 void JSh_UpdateDebugger() {}
 void JSh_CleanupDebugger() {}
 bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file) { return false;}
@@ -825,21 +374,6 @@ MOZ_API PPV JSh_GetPPointer(PPV* p)
         return *p;
     }
     return 0;
-}
-
-MOZ_API JS::Heap<JSObject*>* JSh_NewHeapObject(JSObject* obj)
-{
-    return new JS::Heap<JSObject*>(obj);
-}
-
-MOZ_API void JSh_DelHeapObject(JS::Heap<JSObject*>* heapObj)
-{
-    delete heapObj;
-}
-
-MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data)
-{
-    JS_SetGCCallback(rt, cb, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -887,13 +421,6 @@ MOZ_API JSObject* GetJSTableByName(char* name)
             return 0;
     }
     return obj;
-}
-MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global, JSFinalizeOp finalizer)
-{
-    g_rt = rt;
-    g_cx = cx;
-    g_global = global;
-    g_finalizer = finalizer;
 }
 
 //
@@ -953,48 +480,6 @@ MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
         return false;
     return true;
 }
-MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef)
-{
-    JS::RootedValue val(g_cx);
-    JS::RootedObject obj(g_cx, jsObj);
-
-    val.setDouble((double)x);
-    JS_SetProperty(g_cx, obj, "x", val);
-
-    val.setDouble((double)y);
-    JS_SetProperty(g_cx, obj, "y", val);
-
-    if (objRef)
-    {
-        val.setObject(*jsObj);
-        JS_SetProperty(g_cx, objRef, "Value", val);
-    }
-}
-
-MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* objRef)
-{
-    JS::RootedValue val(g_cx);
-    JS::RootedObject obj(g_cx, jsObj);
-
-    val.setDouble((double)x);
-    JS_SetProperty(g_cx, obj, "x", val);
-
-    val.setDouble((double)y);
-    JS_SetProperty(g_cx, obj, "y", val);
-
-    val.setDouble((double)z);
-    JS_SetProperty(g_cx, obj, "z", val);
-
-    if (objRef)
-    {
-        val.setObject(*jsObj);
-        JS_SetProperty(g_cx, objRef, "Value", val);
-    }
-}
-
-// void jsGCCallback (JSRuntime *rt, JSGCStatus status, void *data)
-// {
-// }
 
 // 
 // 返回0表示没错
@@ -1077,3 +562,890 @@ MOZ_API JSRuntime* GetRuntime()
 	return g_rt;
 }
 
+
+#include "heapObjStorage.h"
+
+#include <map>
+using namespace std;
+
+map<OBJID, MyHeapObj> mapObjs;
+OBJID objID = 1; // starts from 1, 0 means nothing
+
+OBJID storeJSObject(JS::HandleObject jsObj, JS::HandleObject nativeObj)
+{
+    MyHeapObj st;
+    {
+        st.heapJSObj = new JS::Heap<JSObject*>(jsObj);
+        st.jsObj = jsObj;
+        st.heapNativeObj = new JS::Heap<JSObject*>(nativeObj);
+        st.nativeObj = nativeObj;
+    }
+    OBJID id = objID++;
+    mapObjs[id] = st;
+    return id;
+}
+
+OBJID jsObj2ID(JS::HandleObject nativeObj)
+{
+    map<OBJID, MyHeapObj>::iterator it = mapObjs.begin();
+    for (; it != mapObjs.end(); it++)
+    {
+        if (*(it->second.heapNativeObj) == nativeObj)
+        {
+            return it->first;
+        }
+    }
+    return 0;
+}
+
+JSObject* ID2JSObj(OBJID id)
+{
+    map<OBJID, MyHeapObj>::iterator it = mapObjs.find(id);
+    if (it != mapObjs.end())
+        return *(it->second.heapJSObj);
+    return 0;
+}
+
+bool deleteJSObject(OBJID id)
+{
+    map<OBJID, MyHeapObj>::iterator it = mapObjs.find(id);
+    if (it != mapObjs.end())
+        mapObjs.erase(it);
+    //     map<OBJID, MyHeapObj>::iterator it = mapObjs.begin();
+    //     for (; it != mapObjs.end(); it++)
+    //     {
+    //         if (*(it->second.heapJSObj) == jsObj)
+    //         {
+    // 			delete it->second.heapJSObj;
+    // 			delete it->second.heapNativeObj;
+    //             mapObjs.erase(it);
+    //             return;
+    //         }
+    //     }
+}
+
+//
+// for
+// 1) Array
+// 2) Function Arguments
+// 
+JS::Heap<JS::Value>* arrHeapObj = 0;
+int arrHeapObjSize = 0;
+int arrHeapObjLastIndex = -1;
+JS::Heap<JS::Value>* makeSureArrHeapObj(int index)
+{
+    int size = index + 1;
+    int& S = arrHeapObjSize;
+    if (arrHeapObj == 0 || S < size) 
+    {
+        int oldS = S;
+        if (S == 0)
+            S = 8;
+        while (S < size)
+            S *= 2;
+
+        JS::Heap<JS::Value>* arr = new JS::Heap<JS::Value>[arrHeapObjSize];
+        if (index > 0)
+        {
+            int N = min(oldS - 1, index);
+            for (int i = 0; i < N; i++)
+                arr[i] = oldS[i];
+        }
+        arrHeapObj = arr;
+    }
+}
+
+MOZ_API void moveVal2Arr(int i, JS::HandleValue val)
+{
+    JS::Heap<JS::Value>* arr = makeSureArrHeapObj(i);
+    arr[i] = val;
+    arrHeapObjLastIndex = i;
+}
+
+void clearArrObjectVal()
+{
+    int& index = arrHeapObjLastIndex;
+    if (index >= 0)
+    {
+        for (int i = 0; i <= index; i++)
+        {
+            arrHeapObj[i] = 0;
+        }
+        index = -1;
+    }
+}
+
+std::map<OBJID, JSObject**> mapObjectRoot;
+MOZ_API bool addObjectRoot( OBJID id )
+{
+    if (mapObjectRoot.find(id) != mapObjectRoot.end())
+    {
+        return true;
+    }
+    JSObject* jsObj = ID2JSObj(id);
+    if (jsObj == 0)
+        return false;
+    JSObject** pjsObj = new JSObject*;
+    *pjsObj = jsObj;
+    bool ret = JS_AddObjectRoot(g_cx, pjsObj);
+    mapObjectRoot[id] = pjsObj;
+    return ret;
+}
+
+MOZ_API bool removeObjectRoot( OBJID id )
+{
+    std::map<OBJID, JSObject**>::iterator it = mapObjectRoot.find(id);
+    if (it != mapObjectRoot.end())
+    {
+        JSObject** pjsObj = it->second;
+        JS_RemoveObjectRoot(g_cx, pjsObj);
+        delete pjsObj;
+        mapObjectRoot.erase(it);
+        return true;
+    }
+    return false;
+}
+
+// TODO 所有存在这里的都要立即删除
+std::map<int, JS::Heap<JS::Value> > mapHeapVal;
+int mapHeapVal_i = 1;
+
+MOZ_API void removeHeapMapVal( int index )
+{
+    std::map<int, JS::Heap<JS::Value> >::iterator it = mapHeapVal.find(index);
+    if (it != mapHeapVal.end())
+        mapHeapVal.erase(it);
+}
+
+MOZ_API int moveVal2HeapMap()
+{
+    mapHeapVal[mapHeapVal_i] = valTemp;
+    return mapHeapVal_i++;
+}
+
+bool moveValFromMap2Arr(int iMap, int iArr)
+{
+    std::map<int, JS::Heap<JS::Value> >::iterator it = mapHeapVal.find(iMap);
+    if (it != mapHeapVal.end())
+    {
+        JS::RootedValue val(g_cx, it->second.get());
+        moveVal2Arr(iArr, val);
+        return true;
+    }
+    return false;
+}
+
+MOZ_API bool setProperty( OBJID id, const char* name, int iMap )
+{
+    JS::RootedObject jsObj(g_cx, ID2JSObj(id));
+    if (jsObj == 0)
+        return false;
+
+    std::map<int, JS::Heap<JS::Value> >::iterator it = mapHeapVal.find(iMap);
+    if (it == mapHeapVal.end())
+        return false;
+
+    JS::RootedValue val(g_cx, it->second);
+    bool ret = JS_SetProperty(g_cx, jsObj, name, val);
+    return ret;
+}
+
+MOZ_API void gc()
+{
+    JS_GC(g_rt);
+}
+
+
+
+//
+// global variables
+//
+//
+JS::Value* g_vp = 0;
+int g_argc = 0;
+// 当前取到第几个参数了
+int currIndex = 0;
+// 实际几个参数
+int actualArgc = 0;
+
+JS::Heap<JS::Value> valFunRet;
+JS::Heap<JS::Value> valTemp;
+
+CSEntry csEntry = 0; 
+bool JSCall(JSContext *cx, int argc, JS::Value *vp)
+{
+    g_vp = vp;
+    g_argc = argc;
+
+    int op = JSVAL_TO_INT(JS_ARGV(cx, vp)[0]);
+    int slot = JSVAL_TO_INT(JS_ARGV(cx, vp)[1]);
+    int index = JSVAL_TO_INT(JS_ARGV(cx, vp)[2]);
+    bool isStatic = JSVAL_TO_BOOLEAN(JS_ARGV(cx, vp)[3]);
+
+    //
+    // 计算参数个数，不算末尾的 undefined
+    //
+    // TODO check
+    actualArgc = argc;
+    while (actualArgc > 0 && (JS_ARGV(cx, vp))[actualArgc - 1].isUndefined())
+        actualArgc--;
+
+    currIndex = 4;
+    bool ret = csEntry(op, slot, index, isStatic, actualArgc - currIndex);
+    return ret;
+}
+
+int getCurrIndex()
+{
+    return currIndex;
+}
+
+void setCurIndex(int i)
+{
+    if (i >= 0 && i < actualArgc)
+    {
+        currIndex = i;
+    }
+}
+
+unsigned int argTag( int i )
+{
+    if (i >= 0 && i < actualArgc)
+    {
+        // JSValueTag
+        jsval& val = JS_ARGV(g_cx, g_vp)[i];
+        return val.data.s.tag;
+    }
+    else
+        return 0;
+}
+
+template<class T>
+T val2Number(JS::RootedValue* pval)
+{
+    if (pval->isDouble())
+        return (T)pval->toDouble();
+    else
+        return (T)pval->toInt32();
+}
+
+extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
+const jschar* val2String(JS::RootedValue* pval)
+{
+    JSString* jsStr = pval->toString();
+    return getMarshalStringFromJSString(g_cx, jsStr);
+}
+
+JS::Value& getVpVal()
+{
+    int i = currIndex++;
+    return g_vp[i];
+}
+
+template<class T>
+T getNumber(eGetType e)
+{
+    T ret = 0;
+    switch (e)
+    {
+    case GetArg:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            ret = val2Number<T>(&val);
+        }
+        break;
+    case GetArgRef:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS_GetProperty(g_cx, jsObj, "Value", &v);
+            ret = val2Number<T>(&v);
+        }
+        break;
+    case GetJSFunRet:
+        {
+            ret = val2Number<T>(&valFunRet);
+        }
+        break;
+    }
+    return ret;
+}
+
+short           getChar    (eGetType e) { return getNumber<short>(e); }
+char            getSByte   (eGetType e) { return getNumber<char>(e); }
+unsigned char   getByte    (eGetType e) { return getNumber<unsigned char>(e); }
+short           getInt16   (eGetType e) { return getNumber<short>(e); }
+unsigned short  getUInt16  (eGetType e) { return getNumber<unsigned short>(e); }
+int             getInt32   (eGetType e) { return getNumber<int>(e); }
+unsigned int    getUInt32  (eGetType e) { return getNumber<unsigned int>(e); }
+long long       getInt64   (eGetType e) { return getNumber<long long>(e); }
+unsigned long long getUInt64  (eGetType e) { return getNumber<unsigned long long>(e); }
+int             getEnum    (eGetType e) { return getNumber<int>(e); }
+float           getSingle  (eGetType e) { return getNumber<float>(e); }
+double          getDouble  (eGetType e) { return getNumber<double>(e); }
+long long       getIntPtr  (eGetType e) { return getNumber<long long>(e); }
+
+bool getBoolean(eGetType e) {
+    bool ret = 0;
+    switch (e)
+    {
+    case GetArg:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            ret = val.toBoolean();
+        }
+        break;
+    case GetArgRef:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS_GetProperty(g_cx, jsObj, "Value", &v);
+            ret = v.toBoolean();
+        }
+        break;
+    case GetJSFunRet:
+        {
+            ret = valFunRet.toBoolean();
+        }
+        break;
+    }
+    return ret;
+}
+const jschar* getString(eGetType e) {
+    const jschar* ret = 0;
+    switch (e)
+    {
+    case GetArg:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            ret = val2String(&val);
+        }
+        break;
+    case GetArgRef:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS_GetProperty(g_cx, jsObj, "Value", &v);
+            ret = val2String(&v);
+        }
+        break;
+    case GetJSFunRet:
+        {
+            ret = val2String(&valFunRet);
+        }
+        break;
+    }
+    return ret;
+}
+
+float* floatPtr[3];
+void setFloatPtr2(float* f0, float* f1)
+{
+    floatPtr[0] = f0;
+    floatPtr[1] = f1;
+}
+void setFloatPtr3(float* f0, float* f1, float* f2)
+{
+    floatPtr[0] = f0;
+    floatPtr[1] = f1;
+    floatPtr[2] = f2;
+}
+void val2Vector2(JS::RootedValue* pval)
+{
+    JS::RootedObject obj(g_cx, &pval->toObject());
+
+    JS::RootedValue val(g_cx);
+
+    JS_GetProperty(g_cx, obj, "x", &val);
+    *(floatPtr[0]) = val2Number<float>(&val);
+
+    JS_GetProperty(g_cx, obj, "y", &val);
+    *(floatPtr[1]) = val2Number<float>(&val);
+}
+void val2Vector3(JS::RootedValue* pval)
+{
+    JS::RootedObject obj(g_cx, &pval->toObject());
+
+    JS::RootedValue val(g_cx);
+
+    JS_GetProperty(g_cx, obj, "x", &val);
+    *(floatPtr[0]) = val2Number<float>(&val);
+
+    JS_GetProperty(g_cx, obj, "y", &val);
+    *(floatPtr[1]) = val2Number<float>(&val);
+
+    JS_GetProperty(g_cx, obj, "z", &val);
+    *(floatPtr[2]) = val2Number<float>(&val);
+}
+bool getVector2(eGetType e)
+{
+    bool ret = 0;
+    switch (e)
+    {
+    case GetArg:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            val2Vector2(&val);
+        }
+        break;
+    case GetArgRef:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS_GetProperty(g_cx, jsObj, "Value", &v);
+
+            val2Vector2(&v);
+        }
+        break;
+    case GetJSFunRet:
+        {
+            val2Vector2(&valFunRet);
+        }
+        break;
+    }
+    return ret;
+}
+bool getVector3(eGetType e)
+{
+    bool ret = 0;
+    switch (e)
+    {
+    case GetArg:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            val2Vector3(&val);
+        }
+        break;
+    case GetArgRef:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS_GetProperty(g_cx, jsObj, "Value", &v);
+
+            val2Vector3(&v);
+        }
+        break;
+    case GetJSFunRet:
+        {
+            val2Vector3(&valFunRet);
+        }
+        break;
+    }
+    return ret;
+
+}
+OBJID getObject(eGetType e)
+{
+    OBJID ret = 0;
+    switch (e)
+    {
+    case GetArg:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject obj(g_cx, &val.toObject());
+            ret = jsObj2ID(obj);
+        }
+        break;
+    case GetArgRef:
+        {
+            int i = currIndex++;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS_GetProperty(g_cx, jsObj, "Value", &v);
+
+            JS::RootedObject jsObj2(g_cx, &v.toObject());
+            ret = jsObj2ID(jsObj2);
+        }
+        break;
+    case GetJSFunRet:
+        {
+            JS::RootedObject jsObj(g_cx, &valFunRet.toObject());
+            ret = jsObj2ID(jsObj);
+        }
+        break;
+    }
+    return ret;
+}
+
+template<class T>
+void setNumberI(eSetType e, T value)
+{
+    int vSet = (int)value;
+    switch (e)
+    {
+    case SetJsval:
+        valTemp.setInt32(vSet);
+        break;
+    case SetRval:
+        JS_SET_RVAL(g_cx, g_vp, INT_TO_JSVAL(vSet));
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            v.setInt32(vSet);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+
+template<class T>
+void setNumberF(eSetType e, T value)
+{
+    double vSet = (double)value;
+    switch (e)
+    {
+    case SetJsval:
+        valTemp.setDouble(vSet);
+        break;
+    case SetRval:
+        JS_SET_RVAL(g_cx, g_vp, DOUBLE_TO_JSVAL(vSet));
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            v.setDouble(vSet);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+
+void setChar    (eSetType e, short v)           { return setNumberI<short>(e, v); }
+void setSByte   (eSetType e, char v)            { return setNumberI<char>(e, v); }
+void setByte    (eSetType e, unsigned char v)   { return setNumberI<unsigned char>(e, v); }
+void setInt16   (eSetType e, short v)           { return setNumberI<short>(e, v); }
+void setUInt16  (eSetType e, unsigned short v)  { return setNumberI<unsigned short>(e, v); }
+void setInt32   (eSetType e, int v)             { return setNumberI<int>(e, v); }
+void setUInt32  (eSetType e, unsigned int v)    { return setNumberI<unsigned int>(e, v); }
+void setInt64   (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
+void setUInt64  (eSetType e, unsigned long long v) { return setNumberF<unsigned long long>(e, v); }
+void setEnum    (eSetType e, int v)             { return setNumberI<int>(e, v); }
+void setSingle  (eSetType e, float v)           { return setNumberF<float>(e, v); }
+void setDouble  (eSetType e, double v)          { return setNumberF<double>(e, v); }
+void setIntPtr  (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
+void setBoolean(eSetType e, bool v)
+{
+    bool vSet = v;
+    switch (e)
+    {
+    case SetJsval:
+        valTemp.setBoolean(vSet);
+        break;
+    case SetRval:
+        JS_SET_RVAL(g_cx, g_vp, BOOLEAN_TO_JSVAL(vSet));
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            v.setBoolean(vSet);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void setString(eSetType e, const jschar* value)
+{
+    switch (e)
+    {
+    case SetJsval:
+        JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+        valTemp.setString(jsString);
+        break;
+    case SetRval:
+        JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+        JS_SET_RVAL(g_cx, g_vp, STRING_TO_JSVAL(jsString));
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            JS::RootedString jsString = JS_NewUCStringCopyZ(g_cx, value);
+            v.setString(jsString);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void valSetVector2(JS::RootedValue* pval, float x, float y)
+{
+    JS::RootedObject obj(g_cx, &pval->toObject());
+
+    JS::RootedValue val(g_cx);
+
+    val.setDouble(x);
+    JS_SetProperty(g_cx, obj, "x", val);
+
+    val.setDouble(y);
+    JS_SetProperty(g_cx, obj, "y", val);
+}
+void setVector2(eSetType e, float x, float y)
+{
+    switch (e)
+    {
+    case SetJsval:
+        valSetVector2(pvalTemp, x, y);
+        break;
+    case SetRval:
+        {
+            JS::RootedValue val(g_cx);
+            valSetVector2(&val, x, y);
+            JS_SET_RVAL(g_cx, g_vp, val);
+        }
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            valSetVector2(&v, x, y);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void valSetVector3(JS::RootedValue* pval, float x, float y, float z)
+{
+    JS::RootedObject obj(g_cx, &pval->toObject());
+
+    JS::RootedValue val(g_cx);
+
+    val.setDouble(x);
+    JS_SetProperty(g_cx, obj, "x", val);
+
+    val.setDouble(y);
+    JS_SetProperty(g_cx, obj, "y", val);
+
+    val.setDouble(z);
+    JS_SetProperty(g_cx, obj, "z", val);
+}
+void setVector3(eSetType e, float x, float y, float z)
+{
+    switch (e)
+    {
+    case SetJsval:
+        valSetVector3(pvalTemp, x, y, z);
+        break;
+    case SetRval:
+        {
+            JS::RootedValue val(g_cx);
+            valSetVector3(&val, x, y, z);
+            JS_SET_RVAL(g_cx, g_vp, val);
+        }
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            valSetVector3(&v, x, y, z);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void setObject(eSetType e, OBJID id)
+{
+    // TODO
+    // Check: when id == 0
+    JS::RootedObject jsObj(g_cx, ID2JSObj(id));
+    switch (e)
+    {
+    case SetJsval:
+        valTemp.setObjectOrNull(jsObj);
+        break;
+    case SetRval:
+        {
+            JS::RootedValue val(g_cx);
+            val.setObjectOrNull(jsObj);
+            JS_SET_RVAL(g_cx, g_vp, val);
+        }
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            val.setObjectOrNull(jsObj);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void setArray(eSetType e, int count)
+{
+    JSObject* _t = JS_NewArrayObject(g_cx, count, 0 /* jsval* */);
+    JS::RootedObject arrObj(g_cx, _t);
+    for (int i = 0; i < count; i++)
+    {
+        JS_SetElement(g_cx, arrObj, i, &arrHeapObj[i]);
+    }
+
+    // TODO clear arrHeapObj
+
+    switch (e)
+    {
+    case SetJsval:
+        valTemp.setObjectOrNull(arrObj);
+        break;
+    case SetRval:
+        {
+            JS::RootedValue val(g_cx);
+            val.setObjectOrNull(arrObj);
+            JS_SET_RVAL(g_cx, g_vp, val);
+        }
+        break;
+    case SetArgRef:
+        {
+            int i = currIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS::RootedValue v(g_cx);
+            val.setObjectOrNull(arrObj);
+            JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+
+MOZ_API bool isVector2( int i )
+{
+    JS::Value& val = JS_ARGV(cx, vp)[i];
+    if (val.isObject())
+    {
+        JS::RootedObject obj = val.toObject();
+        JS::RootedValue v(g_cx);
+        JS_GetProperty(g_cx, obj, "_fullname", &v);
+        if (v->isString())
+        {
+            // TODO fix memory leak
+            JS::RootedString jsStr = v->toString();
+            const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
+            return strcmp(str, "UnityEngine.Vector2") == 0;
+        }
+    }
+    return false;
+}
+
+MOZ_API bool isVector3( int i )
+{
+    JS::Value& val = JS_ARGV(cx, vp)[i];
+    if (val.isObject())
+    {
+        JS::RootedObject obj = val.toObject();
+        JS::RootedValue v(g_cx);
+        JS_GetProperty(g_cx, obj, "_fullname", &v);
+        if (v->isString())
+        {
+            // TODO fix memory leak
+            JS::RootedString jsStr = v->toString();
+            const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
+            return strcmp(str, "UnityEngine.Vector3") == 0;
+        }
+    }
+    return false;
+}
+
+MOZ_API void moveTempVal2Arr( int i )
+{
+    moveVal2Arr(i, *valTemp);
+}
+
+extern JS::Heap<JS::Value>* arrHeapObj;
+MOZ_API bool callFunctionName(OBJID jsObjID, const char* functionName, int argCount)
+{
+    JS::RootedObject jsObj(g_cx, ID2JSObj(jsObjID));
+    if (jsObj == 0)
+        return false;
+
+    // TODO clear arrHeapObj
+    if (argCount == 0)
+    {
+        return JS_CallFunctionName(g_cx, jsObj, functionName, 0/* argc */, 0/* argv */, &valFunRet);
+    }
+    else
+    {
+        JS::Value* array = new JS::Value[argCount];
+        for (int i = 0; i < argCount; i++)
+            array[i] = arrHeapObj[i];
+
+        return JS_CallFunctionName(g_cx, jsObj, functionName, argCount, array, &valFunRet);
+    }
+}
+
+MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
+{
+    int lineno = 1;
+    JS::CompileOptions options(cx);
+    options.setUTF8(true).setFileAndLine(filename, lineno);
+    JS::RootedScript jsScript = JS_CompileScript(g_cx, JS::RootedObject(g_cx, g_global), ascii, length, options);
+    if (jsScript == 0)
+        return false;
+
+    JS::RootedValue val(g_cx);
+    if (!JS_ExecuteScript(g_cx, g_global, jsScript, &val))
+        return false;
+
+    // val 不需要
+
+    // TODO add script root
+    // 需要吗？好像不需要吧
+    JS_AddNamedScriptRoot(g_cx, &jsScript, filename);
+
+    return true;
+}
+
+MOZ_API void setRvalBool( jsval* vp, bool v )
+{
+    JS_SET_RVAL(g_cx, vp, BOOLEAN_TO_JSVAL(v));
+}
+
+MOZ_API void reportError( const char* err )
+{
+    JS_ReportError(g_cx, "%s", err);
+}

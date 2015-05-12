@@ -38,31 +38,6 @@ struct MyHeapObj
 };
 
 extern "C"{
-
-	MOZ_API bool  JSh_Init(void);
-	MOZ_API void JSh_ShutDown(void);
-	MOZ_API JSRuntime* JSh_NewRuntime(uint32_t maxbytes, int useHelperThreads);
-	MOZ_API void JSh_DestroyRuntime(JSRuntime *rt);
-	MOZ_API void JSh_SetGCParameter(JSRuntime *rt, int key, uint32_t value);
-
-	MOZ_API JSContext* JSh_NewContext(JSRuntime *rt, size_t stackChunkSize);
-	MOZ_API void JSh_DestroyContext(JSContext *cx);
-	MOZ_API void JSh_DestroyContextNoGC(JSContext *cx);
-
-	MOZ_API JSErrorReporter JSh_SetErrorReporter(JSContext *cx, JSErrorReporter er);
-	MOZ_API void* JSh_GetContextPrivate(JSContext *cx);
-	MOZ_API void JSh_SetContextPrivate(JSContext *cx, void *data);
-	MOZ_API void* JSh_GetPrivate(JSObject *obj);
-	MOZ_API void JSh_SetPrivate(JSObject *obj, void *data);
-	MOZ_API JSObject* JSh_GetParent(JSObject *obj);
-	MOZ_API bool JSh_SetParent(JSContext *cx, JSObject *obj, JSObject *parent);
-
-	MOZ_API JSObject* JSh_NewGlobalObject(JSContext *cx, int hookOption);
-
-	MOZ_API bool JSh_InitStandardClasses(JSContext *cx, JSObject *obj);
-	MOZ_API JSObject* JSh_InitReflect(JSContext *cx, JSObject *global);
-	MOZ_API JSFunction* JSh_DefineFunction(JSContext *cx, JSObject *obj, const char *name, JSNative call, unsigned nargs, unsigned attrs);
-    MOZ_API void JSh_ReportError(JSContext* cx, const char* sErr);
 	MOZ_API int JSh_GetErroReportLineNo(JSErrorReport* report);
 	MOZ_API const char* JSh_GetErroReportFileName(JSErrorReport* report);
 	MOZ_API JSObject* JSh_NewArrayObject(JSContext *cx, int length, jsval *vector);
@@ -81,216 +56,152 @@ extern "C"{
 	// init a class with default value
 	MOZ_API JSObject* JSh_InitClass(JSContext* cx, JSObject* glob, JSClass* jsClass);
 
-	MOZ_API void JSh_GC(JSRuntime *rt);
-	MOZ_API void JSh_MaybeGC(JSContext *cx);
-	MOZ_API bool JSh_EvaluateScript(JSContext *cx, JSObject *obj,
-		const char *bytes, unsigned length,
-		const char *filename, unsigned lineno,
-		jsval *rval);
-
 	////////////////////////////////////////////////////////////////////////////////////
 	// new a class and assign it a class
 
 	MOZ_API JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp);
-
 	MOZ_API JSObject* JSh_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto, JSObject *parent);
-
-	MOZ_API JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp);
-    
+	MOZ_API JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp);    
     MOZ_API unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i);
-
-	MOZ_API bool JSh_ArgvBool(JSContext* cx, jsval* vp, int i);
-	MOZ_API double JSh_ArgvDouble(JSContext* cx, jsval* vp, int i);
-	MOZ_API int JSh_ArgvInt(JSContext* cx, jsval* vp, int i);
-	MOZ_API const jschar* JSh_ArgvString(JSContext* cx, jsval* vp, int i);
-	MOZ_API const char* JSh_ArgvStringUTF8(JSContext* cx, jsval* vp, int i);
-	MOZ_API JSObject* JSh_ArgvObject(JSContext* cx, jsval* vp, int i);
-	MOZ_API JSFunction* JSh_ArgvFunction(JSContext* cx, jsval* vp, int i);
-
 	MOZ_API bool JSh_ArgvFunctionValue(JSContext* cx, jsval* vp, int i, jsval* pval);
-	////////////////////////////////////////////////////////////////////////////////////
-	// returns
 
-	MOZ_API void JSh_SetRvalBool(JSContext* cx, jsval* vp, bool value);
-	MOZ_API void JSh_SetRvalDouble(JSContext* cx, jsval* vp, double value);
-	MOZ_API void JSh_SetRvalInt(JSContext* cx, jsval* vp, int value);
-	MOZ_API void JSh_SetRvalUInt(JSContext* cx, jsval* vp, unsigned int value);
-	MOZ_API void JSh_SetRvalString(JSContext* cx, jsval* vp, const jschar* value);
-	MOZ_API void JSh_SetRvalObject(JSContext* cx, jsval* vp, JSObject* value);
-	MOZ_API void JSh_SetRvalUndefined(JSContext* cx, jsval* vp);
-	MOZ_API void JSh_SetRvalJSVAL(JSContext* cx, jsval* vp, jsval* value);
-
-	////////////////////////////////////////////////////////////////////////////////////
-	// generate jsval
-
-	MOZ_API void JSh_SetJsvalBool(jsval* vp, bool value);
-	MOZ_API void JSh_SetJsvalDouble(jsval* vp, double value);
-	MOZ_API void JSh_SetJsvalInt(jsval* vp, int value);
-	MOZ_API void JSh_SetJsvalUInt(jsval* vp, unsigned int value);
-	MOZ_API void JSh_SetJsvalString(JSContext* cx, jsval* vp, const jschar* value);
-	MOZ_API void JSh_SetJsvalObject(jsval* vp, JSObject* value);
-	MOZ_API void JSh_SetJsvalUndefined(jsval* vp);
-
-	MOZ_API bool JSh_GetJsvalBool(jsval* vp);
-	MOZ_API double JSh_GetJsvalDouble(jsval* vp);
-	MOZ_API int JSh_GetJsvalInt(jsval* vp);
-	MOZ_API unsigned int JSh_GetJsvalUInt(jsval* vp);
-	MOZ_API const jschar* JSh_GetJsvalString(JSContext* cx, jsval* vp);
-	MOZ_API JSObject* JSh_GetJsvalObject(jsval* vp);
-
-
-	MOZ_API JSCompartment* JSh_EnterCompartment(JSContext *cx, JSObject *target);
-	MOZ_API void JSh_LeaveCompartment(JSContext *cx, JSCompartment *oldCompartment);
-
-	////////////////////////////////////////////////////////////////////////////////////
-
-	MOZ_API void  JSh_SetTrustedPrincipals(JSRuntime *rt, const JSPrincipals *prin);
 	MOZ_API JSScript* JSh_CompileScript(JSContext *cx, JSObject* global, const char *ascii, size_t length, const char* filename, size_t lineno);
 	MOZ_API bool JSh_ExecuteScript(JSContext *cx, JSObject *obj, JSScript *script, jsval *rval);
 	// this function is useless
 	MOZ_API JSFunction* JSh_GetFunction(JSContext* cx, JSObject* obj, const char* name);
 	MOZ_API bool JSh_GetFunctionValue(JSContext* cx, JSObject* obj, const char* name, jsval* val);
-	MOZ_API bool JSh_ObjectIsFunction(JSContext *cx, JSObject *obj);
-
-	MOZ_API bool JSh_CallFunction(JSContext *cx, JSObject *obj, JSFunction *fun, unsigned argc, jsval *argv, jsval *rval);
-	MOZ_API bool JSh_CallFunctionName(JSContext *cx, JSObject *obj, const char *name, unsigned argc, jsval *argv, jsval *rval);
-	MOZ_API bool JSh_CallFunctionValue(JSContext *cx, JSObject *obj, jsval* fval, unsigned argc, jsval *argv, jsval *rval);
-
-	MOZ_API bool JSh_IsNative(JSObject *obj);
-	MOZ_API JSRuntime* JSh_GetObjectRuntime(JSObject *obj);
-	MOZ_API JSObject* JSh_NewObjectWithGivenProto(JSContext *cx, const JSClass *clasp, JSObject *proto, JSObject *parent);
-	MOZ_API bool JSh_DeepFreezeObject(JSContext *cx, JSObject *obj);
-	MOZ_API bool JSh_FreezeObject(JSContext *cx, JSObject *obj);
-
-	MOZ_API bool JSh_StringHasBeenInterned(JSContext *cx, JSString *str);
-
-	//     MOZ_API jsid INTERNED_STRING_TO_JSID(JSContext *cx, JSString *str)
-	//     {
-	//         return INTERNED_STRING_TO_JSID(cx, str);
-	//     }
-
-	// this function compile fail on mac, don't know why
-	//     MOZ_API bool JSh_CallOnce(JSCallOnceType *once, JSInitCallback func)
-	//     {
-	//         return JS_CallOnce(once, func);
-	//     }
-	MOZ_API int64_t JSh_Now(void);
-	MOZ_API jsval JSh_GetNaNValue(JSContext *cx);
-
-	MOZ_API jsval JSh_GetNegativeInfinityValue(JSContext *cx);
-
-	MOZ_API jsval JSh_GetPositiveInfinityValue(JSContext *cx);
-
-	MOZ_API jsval JSh_GetEmptyStringValue(JSContext *cx);
-
-	MOZ_API JSString* JSh_GetEmptyString(JSRuntime *rt);
-
-	//     MOZ_API bool JS_ConvertValue(JSContext *cx, JS::HandleValue v, JSType type, JS::MutableHandleValue vp);
-	//     MOZ_API bool JS_ValueToObject(JSContext *cx, JS::HandleValue v, JS::MutableHandleObject objp);
 	MOZ_API JSFunction* JSh_ValueToFunction(JSContext *cx, jsval* v);
 	MOZ_API JSFunction* JSh_ValueToConstructor(JSContext *cx, jsval* v);
 
-	MOZ_API JSString* JSh_ValueToSource(JSContext *cx, jsval v);
-	MOZ_API bool JSh_DoubleIsInt32(double d, int32_t *ip);
-	MOZ_API int32_t JSh_DoubleToInt32(double d);
-
-	MOZ_API uint32_t JSh_DoubleToUint32(double d);
-
-	MOZ_API JSType JSh_TypeOfValue(JSContext *cx, jsval v);
-	MOZ_API const char * JSh_GetTypeName(JSContext *cx, JSType type);
-	MOZ_API bool JSh_StrictlyEqual(JSContext *cx, jsval v1, jsval v2, bool *equal);
-	MOZ_API bool JSh_LooselyEqual(JSContext *cx, jsval v1, jsval v2, bool *equal);
-	MOZ_API bool JSh_SameValue(JSContext *cx, jsval v1, jsval v2, bool *same);
-
-	MOZ_API bool JSh_IsBuiltinEvalFunction(JSFunction *fun);
-	MOZ_API bool JSh_IsBuiltinFunctionConstructor(JSFunction *fun);
-	MOZ_API void* JSh_GetRuntimePrivate(JSRuntime *rt);
-	MOZ_API void JSh_SetRuntimePrivate(JSRuntime *rt, void *data);
-	MOZ_API void JSh_BeginRequest(JSContext *cx);
-	MOZ_API void JSh_EndRequest(JSContext *cx);
-	MOZ_API bool JSh_IsInRequest(JSRuntime *rt);
-	MOZ_API void JSh_SetJitHardening(JSRuntime *rt, bool enabled);
-	MOZ_API const char * JSh_GetImplementationVersion(void);
-	MOZ_API void JSh_SetDestroyCompartmentCallback(JSRuntime *rt, JSDestroyCompartmentCallback callback);
-	MOZ_API void JSh_SetDestroyZoneCallback(JSRuntime *rt, JSZoneCallback callback);
-	MOZ_API void JSh_SetSweepZoneCallback(JSRuntime *rt, JSZoneCallback callback);
-	MOZ_API void JSh_SetCompartmentNameCallback(JSRuntime *rt, JSCompartmentNameCallback callback);
-	MOZ_API void JSh_SetWrapObjectCallbacks(JSRuntime *rt, const JSWrapObjectCallbacks *callbacks);
-	MOZ_API void JSh_SetCompartmentPrivate(JSCompartment *compartment, void *data);
-	MOZ_API void* JSh_GetCompartmentPrivate(JSCompartment *compartment);
-	MOZ_API void JSh_SetZoneUserData(JS::Zone *zone, void *data);
-	MOZ_API void* JSh_GetZoneUserData(JS::Zone *zone);
-
-	//     MOZ_API bool JS_WrapObject(JSContext *cx, JS::MutableHandleObject objp);
-	//     MOZ_API bool JS_WrapValue(JSContext *cx, JS::MutableHandleValue vp);
-	//     MOZ_API bool JS_WrapId(JSContext *cx, jsid *idp);
-	//     MOZ_API JSObject* JS_TransplantObject(JSContext *cx, JS::Handle<JSObject*> origobj, JS::Handle<JSObject*> target);
-	//     MOZ_API bool JS_RefreshCrossCompartmentWrappers(JSContext *cx, JSObject *ob);
-	//     MOZ_API void JS_IterateCompartments(JSRuntime *rt, void *data, JSIterateCompartmentCallback compartmentCallback);
-	// 
-	// 
-	//     MOZ_API bool JS_ResolveStandardClass(JSContext *cx, JS::Handle<JSObject*> obj, JS::Handle<jsid> id, bool *resolved);
-	//     MOZ_API bool JS_EnumerateStandardClasses(JSContext *cx, JS::Handle<JSObject*> obj);
-	//     MOZ_API bool JS_GetClassObject(JSContext *cx, JSObject *obj, JSProtoKey key, JSObject **objp);
-	//     MOZ_API bool JS_GetClassPrototype(JSContext *cx, JSProtoKey key, JSObject **objp);
-
-	MOZ_API JSProtoKey JSh_IdentifyClassPrototype(JSContext *cx, JSObject *obj);
-
-	MOZ_API JSObject* JSh_ThisObject(JSContext* cx, jsval* vp);
-	MOZ_API bool JSh_AddValueRoot(JSContext *cx, jsval *vp);
-	MOZ_API bool JSh_AddStringRoot(JSContext *cx, JSString **rp);
-	MOZ_API bool JSh_AddObjectRoot(JSContext *cx, JSObject **rp);
-	MOZ_API bool JSh_AddNamedValueRoot(JSContext *cx, jsval *vp, const char *name);
-	MOZ_API bool JSh_AddNamedValueRootRT(JSRuntime *rt, jsval *vp, const char *name);
-	MOZ_API bool JSh_AddNamedStringRoot(JSContext *cx, JSString **rp, const char *name);
-	MOZ_API bool JSh_AddNamedObjectRoot(JSContext *cx, JSObject **rp, const char *name);
-	MOZ_API bool JSh_AddNamedScriptRoot(JSContext *cx, JSScript **rp, const char *name);
-	MOZ_API void JSh_RemoveValueRoot(JSContext *cx, jsval *vp);
-	MOZ_API void JSh_RemoveStringRoot(JSContext *cx, JSString **rp);
-	MOZ_API void JSh_RemoveObjectRoot(JSContext *cx, JSObject **rp);
-	MOZ_API void JSh_RemoveScriptRoot(JSContext *cx, JSScript **rp);
-	MOZ_API void JSh_RemoveValueRootRT(JSRuntime *rt, jsval *vp);
-	MOZ_API void JSh_RemoveStringRootRT(JSRuntime *rt, JSString **rp);
-	MOZ_API void JSh_RemoveObjectRootRT(JSRuntime *rt, JSObject **rp);
-	MOZ_API void JSh_RemoveScriptRootRT(JSRuntime *rt, JSScript **rp);
-	MOZ_API  void JSh_SetNativeStackQuota(JSRuntime *cx, size_t systemCodeStackSize, size_t trustedScriptStackSize, size_t untrustedScriptStackSize);
-
 	////////////////////////////////////////////////////////////////////////////////////
 	// debugger api
-	MOZ_API void JSh_EnableDebugger(JSContext* cx, JSObject* global, const char** src_searchpath, int nums, int port);
+	MOZ_API void JSh_EnableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port);
 	MOZ_API void JSh_UpdateDebugger();
     MOZ_API void JSh_CleanupDebugger();
     // some useful api
     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
-    MOZ_API void JSh_DumpBacktrace(JSContext* cx);
 
+
+    // storeJSObject 将 jsObj 和 nativeObj 表示的类对象存储起来，返回 ID
+    //
+    OBJID storeJSObject(JS::HandleObject jsObj, JS::HandleObject nativeObj);
 
     //
-    // some useful function
-    //
-    typedef void* PPV;
-    MOZ_API PPV* JSh_NewPPointer(PPV pValue);
-    MOZ_API void JSh_DelPPointer(PPV* p);
-    MOZ_API void JSh_SetPPointer(PPV* p, PPV pValue);
-    MOZ_API PPV JSh_GetPPointer(PPV* p);
+    // 根据 nativeObj 查找 ID
+    // 
+    OBJID jsObj2ID(JS::HandleObject nativeObj);
+    JSObject* ID2JSObj(OBJID id);
+    bool deleteJSObject(OBJID id);
 
-    
+    MOZ_API void moveVal2Arr(int i, JS::HandleValue val);
+    void clearArrObjectVal();
+    MOZ_API void removeHeapMapVal(int index);
+    MOZ_API int moveVal2HeapMap();
+    MOZ_API bool moveValFromMap2Arr(int iMap, int iArr);
+    MOZ_API bool addObjectRoot(OBJID id);
+    MOZ_API bool removeObjectRoot(OBJID id);
+    MOZ_API bool setProperty(OBJID id, const char* name, int iMap);
+    MOZ_API void gc();
 
-    // MOZ_API void 
 
-    MOZ_API JS::Heap<JSObject*>* JSh_NewHeapObject(JSObject* obj);
-    MOZ_API void JSh_DelHeapObject(JS::Heap<JSObject*>* heapObj);
 
-    MOZ_API void JSh_SetGCCallback(JSRuntime *rt, JSGCCallback cb, void *data);
+    enum eGetType
+    {
+        GetArg = 0,
+        GetArgRef = 1,
+        GetJSFunRet = 2,
+        GetJsval = 3,
+    };
+    enum eSetType
+    {
+        SetRval = 0,
+        SetArgRef = 1,
+        SetJsval = 2,
+    };
 
-    //
-    // anvanced functions
-    //
+    typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
+    bool JSCall(JSContext *cx, int argc, JS::Value *vp);
 
-    MOZ_API void InitPersistentObject(JSRuntime* rt, JSContext* cx, JSObject* global, JSFinalizeOp finalizer);
-    MOZ_API void SetVector2(JSObject* jsObj, float x, float y, JSObject* objRef);
-    MOZ_API void SetVector3(JSObject* jsObj, float x, float y, float z, JSObject* objRef);
+    MOZ_API int getCurrIndex();
+    MOZ_API void setCurIndex(int i);
+
+    unsigned int argTag(int i);
+
+
+    extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
+    const jschar* val2String(JS::RootedValue* pval);
+
+    JS::Value& getVpVal();
+
+
+    MOZ_API short           getChar    (eGetType e);
+    MOZ_API char            getSByte   (eGetType e);
+    MOZ_API unsigned char   getByte    (eGetType e);
+    MOZ_API short           getInt16   (eGetType e);
+    MOZ_API unsigned short  getUInt16  (eGetType e);
+    MOZ_API int             getInt32   (eGetType e);
+    MOZ_API unsigned int    getUInt32  (eGetType e);
+    MOZ_API long long       getInt64   (eGetType e);
+    MOZ_API unsigned long long getUInt64  (eGetType e);
+    MOZ_API int             getEnum    (eGetType e);
+    MOZ_API float           getSingle  (eGetType e);
+    MOZ_API double          getDouble  (eGetType e);
+    MOZ_API long long       getIntPtr  (eGetType e);
+    MOZ_API bool getBoolean(eGetType e);
+    MOZ_API const jschar* getString(eGetType e);
+
+    MOZ_API void setFloatPtr2(float* f0, float* f1);
+    MOZ_API void setFloatPtr3(float* f0, float* f1, float* f2);
+    void val2Vector2(JS::RootedValue* pval);
+    MOZ_API bool getVector2(eGetType e);
+    void val2Vector3(JS::RootedValue* pval);
+    MOZ_API bool getVector3(eGetType e);
+    MOZ_API OBJID getObject(eGetType e);
+
+    MOZ_API void setChar    (eSetType e, short v);
+    MOZ_API void setSByte   (eSetType e, char v);
+    MOZ_API void setByte    (eSetType e, unsigned char v);
+    MOZ_API void setInt16   (eSetType e, short v);
+    MOZ_API void setUInt16  (eSetType e, unsigned short v);
+    MOZ_API void setInt32   (eSetType e, int v);
+    MOZ_API void setUInt32  (eSetType e, unsigned int v);
+    MOZ_API void setInt64   (eSetType e, long long v);
+    MOZ_API void setUInt64  (eSetType e, unsigned long long v);
+    MOZ_API void setEnum    (eSetType e, int v);
+    MOZ_API void setSingle  (eSetType e, float v);
+    MOZ_API void setDouble  (eSetType e, double v);
+    MOZ_API void setIntPtr  (eSetType e, long long v);
+    MOZ_API void setBoolean(eSetType e, bool v);
+    MOZ_API void setString(eSetType e, const jschar* value);
+    void valSetVector2(JS::RootedValue* pval, float x, float y);
+    MOZ_API void setVector2(eSetType e, float x, float y);
+    void valSetVector3(JS::RootedValue* pval, float x, float y, float z);
+    MOZ_API void setVector3(eSetType e, float x, float y, float z);
+    MOZ_API void setObject(eSetType e, OBJID id);
+    MOZ_API void setArray(eSetType e, int count);
+
+    MOZ_API bool isVector2(int i);
+    MOZ_API bool isVector3(int i);
+    MOZ_API void moveTempVal2Arr( int i );
+
+    MOZ_API bool callFunctionName(OBJID jsObjID, const char* functionName, int argCount);
+
+    MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
+    /////////////////////////////////////////////////////////////////////
+
+    MOZ_API bool evaluate(const char* ascii, size_t length, const char* filename);
+    MOZ_API void setRvalBool(jsval* vp, bool v);
+    MOZ_API void reportError(const char* err);
+
+    MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req);
+    MOZ_API void ShutdownJSEngine();
+    MOZ_API OBJID NewJSClassObject(char* name);
+    MOZ_API bool RemoveJSClassObject(OBJID odjID);
+    MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName);
+    MOZ_API JSContext* GetContext();
+    MOZ_API JSObject* GetGlobal();
+    MOZ_API JSRuntime* GetRuntime();
 }
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__
