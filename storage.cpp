@@ -18,8 +18,12 @@ OBJID objMap::add(JS::HandleObject jsObj)
     return id;
 }
 
-OBJID objMap::jsObj2ID(JS::HandleObject jsObj)
+OBJID objMap::jsObj2ID(JS::HandleObject jsObj, bool autoAdd)
 {
+	if (jsObj == 0)
+	{
+		return 0;
+	}
     map<OBJID, stHeapObj>::iterator it = mMap.begin();
     for (; it != mMap.end(); it++)
     {
@@ -28,6 +32,10 @@ OBJID objMap::jsObj2ID(JS::HandleObject jsObj)
             return it->first;
         }
     }
+	if (autoAdd)
+	{
+		return add(jsObj);
+	}
     return 0;
 }
 

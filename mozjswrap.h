@@ -84,21 +84,19 @@ extern "C"
     };
 
     typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
+	typedef void (* OnObjCollected)(OBJID id);
     bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
     MOZ_API int getArgIndex();
     MOZ_API void setArgIndex(int i);
     MOZ_API int incArgIndex();
 
-    unsigned int argTag(int i);
 
 
     extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
-    const jschar* val2String(JS::RootedValue* pval);
+    const jschar* val2String(JS::HandleValue pval);
 
-    JS::Value& getVpVal();
-
-
+	MOZ_API unsigned int getTag(eGetType e);
     MOZ_API short           getChar    (eGetType e);
     MOZ_API char            getSByte   (eGetType e);
     MOZ_API unsigned char   getByte    (eGetType e);
@@ -117,9 +115,9 @@ extern "C"
 
     MOZ_API void setFloatPtr2(float* f0, float* f1);
     MOZ_API void setFloatPtr3(float* f0, float* f1, float* f2);
-    void val2Vector2(JS::RootedValue* pval);
+    void val2Vector2(JS::HandleValue pval);
     MOZ_API bool getVector2(eGetType e);
-    void val2Vector3(JS::RootedValue* pval);
+    void val2Vector3(JS::HandleValue pval);
     MOZ_API bool getVector3(eGetType e);
     MOZ_API OBJID getObject(eGetType e);
     MOZ_API bool isFunction(eGetType e);
@@ -141,16 +139,16 @@ extern "C"
     MOZ_API void setIntPtr  (eSetType e, long long v);
     MOZ_API void setBoolean(eSetType e, bool v);
     MOZ_API void setString(eSetType e, const jschar* value);
-    void valSetVector2(JS::RootedValue* pval, float x, float y);
+    void valSetVector2(JS::Value* pval, float x, float y);
     MOZ_API void setVector2(eSetType e, float x, float y);
-    void valSetVector3(JS::RootedValue* pval, float x, float y, float z);
+    void valSetVector3(JS::Value* pval, float x, float y, float z);
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
     MOZ_API void setObject(eSetType e, OBJID id);
     MOZ_API void setArray(eSetType e, int count);
     MOZ_API void setFunction(eSetType e, int funID);
 
-    MOZ_API bool isVector2(int i);
-    MOZ_API bool isVector3(int i);
+    MOZ_API bool isVector2(eGetType e);
+    MOZ_API bool isVector3(eGetType e);
 
     // val movement
     MOZ_API void moveTempVal2Arr( int i );
@@ -176,7 +174,7 @@ extern "C"
     MOZ_API void setRvalBool(jsval* vp, bool v);
     MOZ_API FUNCTIONID getObjFunction(OBJID id, const char* fname);
 
-    MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req);
+    MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected);
     MOZ_API bool initErrorHandler();
     MOZ_API void ShutdownJSEngine();
     MOZ_API OBJID createJSClassObject(char* name);
@@ -185,6 +183,7 @@ extern "C"
     MOZ_API bool RemoveJSClassObject(OBJID odjID);
 }
 
+extern CSEntry csEntry;
 
 class objMap
 {
@@ -194,7 +193,7 @@ class objMap
 public:
     static OBJID add(JS::HandleObject jsObj);
     static bool remove(OBJID id);
-    static OBJID jsObj2ID(JS::HandleObject jsObj);
+    static OBJID jsObj2ID(JS::HandleObject jsObj, bool autoAdd = false);
     static JSObject* id2JSObj(OBJID id);
 };
 

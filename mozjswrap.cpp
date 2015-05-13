@@ -40,10 +40,16 @@ jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr)
 JSRuntime* g_rt = 0;
 JSContext* g_cx = 0;
 JSObject* g_global = 0;
-
+OnObjCollected onObjCollected = 0;
 void sc_finalize(JSFreeOp* freeOp, JSObject* obj)
 {
     int id = (int)JS_GetPrivate(obj);
+	objMap::remove(id);
+
+	if (onObjCollected) 
+	{
+		onObjCollected(id);
+	}
 }
 
 static JSClass global_class =
@@ -205,7 +211,7 @@ A. JS: new GameObject.ctor()
 3)   C: 添加 jsID -> csObj 的对应关系
 
 
-B. 当C#中某个操作需要返回一个对象给JS时：
+B. 当C#中某个操作需要返回一个对象给JS时：createJSClassObject
 -------------------------------------
 1) C#: JSDataExchangeMgr.setObject
 2)   C#: 调用 createJSClassObject("GameObject")
@@ -213,7 +219,7 @@ B. 当C#中某个操作需要返回一个对象给JS时：
 4)      C: 对 jsObj 设置 attachFinalizerObject
 
 
-C. 当 JSSerizlizer 需要生成一个对象时：
+C. 当 JSSerizlizer 需要生成一个对象时：newJSClassObject
 -------------------------------------
 1) 调用 newJSClassObject("GameObject")
 2) 接下去 A 的步骤
@@ -250,6 +256,7 @@ MOZ_API OBJID createJSClassObject(char* name)
     }
     return 0;
 }
+// 如果说 JS ctor不会调用到C# 那么 createXXX newXXX 结果一样
 MOZ_API OBJID newJSClassObject(const jschar* name)
 {
     JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, name));
@@ -310,8 +317,7 @@ void registerCS(JSNative req)
 // 返回0表示没错
 //
 JSCompartment* oldCompartment = 0;
-extern CSEntry csEntry;
-MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req)
+MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected)
 {
     JSRuntime*& rt = g_rt;
     JSContext*& cx = g_cx;
@@ -341,6 +347,7 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req)
     }
     JS_InitReflect(cx, global);
     csEntry = entry;
+	::onObjCollected = onObjCollected;
 
     registerCS(req);
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
