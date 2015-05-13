@@ -172,8 +172,8 @@ int valueMap::add(JS::HandleValue val)
 
 int valueMap::addFunction(JS::HandleValue val)
 {
-    JS::RootedValue ns(cx);
-    if (!JS_ConvertValue(cx, val, JSTYPE_FUNCTION, &ns))
+    JS::RootedValue ns(g_cx);
+    if (!JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &ns))
         return 0;
 
     return add(ns);

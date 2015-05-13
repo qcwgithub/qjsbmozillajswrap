@@ -12,6 +12,8 @@ int argIndex = 0;
 // 实际几个参数
 int actualArgc = 0;
 
+#define CallArg(i) (JS_ARGV(g_cx, g_vp)[(i)])
+
 JS::Heap<JS::Value> valFunRet;
 JS::Heap<JS::Value> valTemp;
 
@@ -21,18 +23,20 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     g_vp = vp;
     g_argc = argc;
 
-    int op = JSVAL_TO_INT(JS_ARGV(cx, vp)[0]);
-    int slot = JSVAL_TO_INT(JS_ARGV(cx, vp)[1]);
-    int index = JSVAL_TO_INT(JS_ARGV(cx, vp)[2]);
-    bool isStatic = JSVAL_TO_BOOLEAN(JS_ARGV(cx, vp)[3]);
+    int op = CallArg(0).toInt32();
+    int slot = CallArg(1).toInt32();
+    int index = CallArg(2).toInt32();
+    bool isStatic = CallArg(3).toBoolean();
 
     //
     // 计算参数个数，不算末尾的 undefined
     //
     // TODO check
     actualArgc = argc;
-    while (actualArgc > 0 && (JS_ARGV(cx, vp))[actualArgc - 1].isUndefined())
+    while (actualArgc > 0 && CallArg(actualArgc - 1).isUndefined())
+    {
         actualArgc--;
+    }
 
     argIndex = 4;
     bool ret = csEntry(op, slot, index, isStatic, actualArgc - argIndex);
@@ -62,11 +66,13 @@ unsigned int argTag( int i )
     if (i >= 0 && i < actualArgc)
     {
         // JSValueTag
-        jsval& val = JS_ARGV(g_cx, g_vp)[i];
+        jsval& val = CallArg(i);
         return val.data.s.tag;
     }
     else
+    {
         return 0;
+    }
 }
 
 template<class T>
@@ -417,7 +423,8 @@ MOZ_API int getFunction(eGetType e)
         break;
     case GetJSFunRet:
         {
-            ret = valueMap::addFunction(valFunRet);
+            JS::RootedValue val(g_cx, valFunRet);
+            ret = valueMap::addFunction(val);
         }
         break;
     }
@@ -682,6 +689,35 @@ void setObject(eSetType e, OBJID id)
             JS::RootedValue v(g_cx);
             val.setObjectOrNull(jsObj);
             JS_SetProperty(g_cx, jsObj, "Value", v);
+        }
+        break;
+    }
+}
+void setFunction(eSetType e, int funID)
+{
+    JS::Value _v;
+    if (!valueMap::get(funID, &_v))
+        return;
+
+    JS::RootedValue fval(g_cx, _v);
+
+    switch (e)
+    {
+    case SetJsval:
+        valTemp = fval;
+        break;
+    case SetRval:
+        {
+            JS_SET_RVAL(g_cx, g_vp, fval);
+        }
+        break;
+    case SetArgRef:
+        {
+            int i = argIndex;
+            JS::RootedValue val(g_cx, g_vp[i]);
+            JS::RootedObject jsObj(g_cx, &val.toObject());
+
+            JS_SetProperty(g_cx, jsObj, "Value", fval);
         }
         break;
     }

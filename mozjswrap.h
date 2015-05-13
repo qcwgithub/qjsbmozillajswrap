@@ -31,6 +31,11 @@ extern JSObject* g_global;
 typedef int OBJID;
 typedef int FUNCTIONID;
 
+extern JS::Heap<JS::Value> valFunRet;
+extern JS::Heap<JS::Value> valTemp;
+extern JSObject** ppCSObj;
+extern FUNCTIONID jsErrorEntry;
+
 struct stHeapObj
 {
     JS::Heap<JSObject*>* heapJSObj;
@@ -89,6 +94,8 @@ extern "C"
     // 第1个参数是个id
     // 因为会调用 setProperty 前面一定是用创建 JS 类的对象
     MOZ_API bool setProperty(OBJID id, const char* name, int iMap);
+    MOZ_API bool getElement(OBJID id, int i);
+    MOZ_API int getArrayLength(OBJID id);
 
     MOZ_API void gc();
 
@@ -170,12 +177,13 @@ extern "C"
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
     MOZ_API void setObject(eSetType e, OBJID id);
     MOZ_API void setArray(eSetType e, int count);
+    MOZ_API void setFunction(eSetType e, int funID);
 
     MOZ_API bool isVector2(int i);
     MOZ_API bool isVector3(int i);
     MOZ_API void moveTempVal2Arr( int i );
 
-    MOZ_API bool callFunctionName(OBJID jsObjID, const char* functionName, int argCount);
+    MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount);
     MOZ_API bool addObjectRoot(int id);
     MOZ_API bool removeObjectRoot(int id);
     MOZ_API bool addValueRoot(int id);
@@ -185,13 +193,16 @@ extern "C"
     MOZ_API OBJID addArgObj2Map();
     MOZ_API void removeObjFromMap(OBJID id);
 
-    MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
+    //MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
     /////////////////////////////////////////////////////////////////////
 
     MOZ_API bool evaluate(const char* ascii, size_t length, const char* filename);
+    MOZ_API const jschar* getArgString(jsval* vp, int i);
     MOZ_API void setRvalBool(jsval* vp, bool v);
+    MOZ_API FUNCTIONID getObjFunction(OBJID id, const char* fname);
 
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req);
+    MOZ_API bool initErrorHandler();
     MOZ_API void ShutdownJSEngine();
     MOZ_API OBJID NewJSClassObject(char* name);
     MOZ_API bool RemoveJSClassObject(OBJID odjID);
@@ -255,5 +266,16 @@ public:
     static int add(JS::HandleValue val);
     static bool remove(int i);
 };
+
+// class argUtil
+// {
+// public:
+//     void setVp(jsval* val) 
+//     {
+//         this->val = val;
+//     }
+// 
+//     jsval* val;
+// };
 
 #endif // #ifndef __MOZ_JSWRAP_HEADER__
