@@ -44,52 +44,22 @@ struct stHeapObj
 
 extern "C"
 {
+	/*
+    * Error handler
+    */
 	MOZ_API int getErroReportLineNo(JSErrorReport* report);
     MOZ_API const char* getErroReportFileName(JSErrorReport* report);
     MOZ_API void reportError(const char* err);
 
-	MOZ_API JSObject* JSh_NewArrayObject(JSContext *cx, int length, jsval *vector);
-	MOZ_API bool JSh_IsArrayObject(JSContext *cx, JSObject *obj);
-	// return -1: fail
-	MOZ_API int JSh_GetArrayLength(JSContext *cx, JSObject *obj);
-	MOZ_API bool JSh_GetElement(JSContext *cx, JSObject *obj, uint32_t index, jsval* val);
-	MOZ_API bool JSh_SetElement(JSContext *cx, JSObject *obj, uint32_t index, jsval* pVal);
-    MOZ_API bool JSh_GetProperty(JSContext *cx, JSObject *obj, const char* name, jsval* val);
-	MOZ_API bool JSh_SetProperty(JSContext *cx, JSObject *obj, const char* name, jsval* pVal);
-    MOZ_API bool JSh_GetUCProperty(JSContext *cx, JSObject *obj, jschar* name, int nameLen, jsval* val);
-	MOZ_API bool JSh_SetUCProperty(JSContext *cx, JSObject *obj, jschar* name, int nameLen, jsval* pVal);
-	// new a JSClass with specified flag and finalizer
-	MOZ_API JSClass* JSh_NewClass(const char* name, unsigned int flag, JSFinalizeOp finalizeOp);
-
-	// init a class with default value
-	MOZ_API JSObject* JSh_InitClass(JSContext* cx, JSObject* glob, JSClass* jsClass);
-
-	////////////////////////////////////////////////////////////////////////////////////
-	// new a class and assign it a class
-
-// 	MOZ_API JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp);
-// 	MOZ_API JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp);    
-    MOZ_API unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i);
-	MOZ_API bool JSh_ArgvFunctionValue(JSContext* cx, jsval* vp, int i, jsval* pval);
-
-	MOZ_API JSScript* JSh_CompileScript(JSContext *cx, JSObject* global, const char *ascii, size_t length, const char* filename, size_t lineno);
-	MOZ_API bool JSh_ExecuteScript(JSContext *cx, JSObject *obj, JSScript *script, jsval *rval);
-	// this function is useless
-	MOZ_API JSFunction* JSh_GetFunction(JSContext* cx, JSObject* obj, const char* name);
-	MOZ_API bool JSh_GetFunctionValue(JSContext* cx, JSObject* obj, const char* name, jsval* val);
-	MOZ_API JSFunction* JSh_ValueToFunction(JSContext *cx, jsval* v);
-	MOZ_API JSFunction* JSh_ValueToConstructor(JSContext *cx, jsval* v);
-
-	////////////////////////////////////////////////////////////////////////////////////
-	// debugger api
-
+	/*
+    * Debugger
+    */
 	MOZ_API void enableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port);
 	MOZ_API void updateDebugger();
     MOZ_API void cleanupDebugger();
-
-    // some useful api
     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
+
 
     // 第1个参数是个id
     // 因为会调用 setProperty 前面一定是用创建 JS 类的对象
@@ -181,7 +151,12 @@ extern "C"
 
     MOZ_API bool isVector2(int i);
     MOZ_API bool isVector3(int i);
+
+    // val movement
     MOZ_API void moveTempVal2Arr( int i );
+    MOZ_API void moveTempVal2Map( );
+    MOZ_API void removeValFromMap( int i );
+    MOZ_API bool moveValFromMap2Arr(int iMap, int iArr);
 
     MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount);
     MOZ_API bool addObjectRoot(int id);
@@ -204,9 +179,10 @@ extern "C"
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req);
     MOZ_API bool initErrorHandler();
     MOZ_API void ShutdownJSEngine();
-    MOZ_API OBJID NewJSClassObject(char* name);
+    MOZ_API OBJID createJSClassObject(char* name);
+    MOZ_API bool attachFinalizerObject(OBJID id);
+    MOZ_API OBJID newJSClassObject(const jschar* name);
     MOZ_API bool RemoveJSClassObject(OBJID odjID);
-    MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName);
 }
 
 

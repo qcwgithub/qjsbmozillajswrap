@@ -40,27 +40,33 @@ jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr)
 JSRuntime* g_rt = 0;
 JSContext* g_cx = 0;
 JSObject* g_global = 0;
-JSFinalizeOp g_finalizer = 0;
 
 void sc_finalize(JSFreeOp* freeOp, JSObject* obj)
 {
-
+    int id = (int)JS_GetPrivate(obj);
 }
 
 static JSClass global_class =
 {
 	"global", JSCLASS_GLOBAL_FLAGS,
 	JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
-	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, sc_finalize,
+	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
-static JSClass qiucw_class =
+static JSClass normal_class =
 {
-	"qiucw", 0,
+	"qiucw_n", 0,
 	JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
 	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
 	JSCLASS_NO_OPTIONAL_MEMBERS
+};
+static JSClass class_with_finalizer =
+{
+    "qiucw_f", JSCLASS_HAS_PRIVATE,
+    JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
+    JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, sc_finalize,
+    JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
 int getErroReportLineNo(JSErrorReport* report)
@@ -73,237 +79,6 @@ const char* getErroReportFileName(JSErrorReport* report)
 		return "no_file_name";
 	else
 		return report->filename;
-}
-JSObject* JSh_NewArrayObject(JSContext *cx, int length, jsval *vector)
-{
-	return JS_NewArrayObject(cx, length, vector);
-}
-bool JSh_IsArrayObject(JSContext *cx, JSObject *obj)
-{
-	return !!JS_IsArrayObject(cx, obj);
-}
-// return -1: fail
-int JSh_GetArrayLength(JSContext *cx, JSObject *obj)
-{
-	uint32_t length = 0;
-	if (!JS_GetArrayLength(cx, obj, &length))
-		return -1;
-	return (int)length;
-}
-bool JSh_GetElement(JSContext *cx, JSObject *obj, uint32_t index, jsval* val)
-{
-	JS::RootedValue v(cx);
-	JS_GetElement(cx, obj, index, &v);
-	*val = v.get();
-	return true;
-}
-bool JSh_SetElement(JSContext *cx, JSObject *obj, uint32_t index, jsval* pVal)
-{
-	JS::RootedValue arrElement(cx);
-	arrElement = *pVal;
-	return JS_SetElement(cx, obj, index, &arrElement);
-}
-
-bool JSh_GetProperty(JSContext *cx, JSObject *obj, const char* name, jsval* val)
-{
-    JS::RootedValue v(cx);
-    JS_GetProperty(cx, obj, name, &v);
-    *val = v.get();
-	return true;
-}
-bool JSh_SetProperty(JSContext *cx, JSObject *obj, const char* name, jsval* pVal)
-{
-    JS::RootedValue arrElement(cx);
-	arrElement = *pVal;
-	return JS_SetProperty(cx, obj, name, arrElement);
-}
-bool JSh_GetUCProperty(JSContext *cx, JSObject *obj, jschar* name, int nameLen, jsval* val)
-{
-    JS::RootedValue v(cx);
-    JS_GetUCProperty(cx, obj, name, nameLen, &v);
-    *val = v.get();
-	return true;
-}
-bool JSh_SetUCProperty(JSContext *cx, JSObject *obj, jschar* name, int nameLen, jsval* pVal)
-{
-    JS::RootedValue arrElement(cx);
-	arrElement = *pVal;
-	return JS_SetUCProperty(cx, obj, name, nameLen, arrElement);
-}
-
-// new a JSClass with specified flag and finalizer
-JSClass* JSh_NewClass(const char* name, unsigned int flag, JSFinalizeOp finalizeOp)
-{
-	JSClass* cls = new JSClass();
-	memcpy(cls, &global_class, sizeof(JSClass));
-	int len = strlen(name);
-	char* pName = (char*)malloc(len + 1);
-	memcpy(pName, name, len);
-	pName[len] = 0;
-	cls->name = pName;
-	cls->flags = flag;
-	cls->finalize = finalizeOp;
-	return cls;
-}
-
-// init a class with default value
-JSObject* JSh_InitClass(JSContext* cx, JSObject* glob, JSClass* jsClass)
-{
-	JSObject* obj = JS_InitClass(cx, glob,
-		NULL, /* parentProto*/
-		jsClass, /* JSClass*/
-		NULL, /* constructor*/
-		0, /* constructor nargs */
-		NULL, /* JSPropertySpec* */
-		NULL, /* JSFunctionSpec* */
-		NULL, /* static JSPropertySpec* */
-		NULL /* static JSFunctionSpec* */
-		);
-	return obj;
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-// new a class and assign it a class proto
-
-// JSObject* JSh_NewObjectAsClass(JSContext* cx, JSObject* glob, const char* className, JSFinalizeOp finalizeOp)
-// {
-// 	JS::RootedValue nsval(cx);
-// 	JS_GetProperty(cx, glob, className, &nsval);
-// 	if (nsval.isObject())
-// 	{
-// 		JS::RootedObject jsObject(cx, &nsval.toObject());
-// 		JS_GetProperty(cx, jsObject, "prototype", &nsval);
-// 		if (nsval.isObject())
-// 		{
-// 			jsObject = &nsval.toObject();
-// 			JSClass* jsClass = &qiucw_class;
-// 			jsClass->finalize = finalizeOp;
-// 			JSObject* obj = JS_NewObject(cx, jsClass, jsObject/* proto */, 0/* parentProto */);
-// 			return obj;
-// 		}
-// 	}
-// 	return 0;
-// }
-
-
-// 
-// JSObject* JSh_NewMyClass(JSContext *cx, JSFinalizeOp finalizeOp)
-// {
-// 	JSClass* jsClass = &qiucw_class;
-// 	jsClass->finalize = finalizeOp;
-// 	JSObject* obj = JS_NewObject(cx, jsClass, 0/* proto */, 0/* parentProto */);
-// 	return obj;
-// }
-
-unsigned int JSh_ArgvTag(JSContext* cx, jsval* vp, int i)
-{
-    // JSValueTag
-    jsval& val = JS_ARGV(cx, vp)[i];
-    return val.data.s.tag;
-}
-
-bool JSh_ArgvBool(JSContext* cx, jsval* vp, int i) { return JSVAL_TO_BOOLEAN(JS_ARGV(cx, vp)[i]); }
-double JSh_ArgvDouble(JSContext* cx, jsval* vp, int i) { return JSVAL_TO_DOUBLE(JS_ARGV(cx, vp)[i]); }
-int JSh_ArgvInt(JSContext* cx, jsval* vp, int i) { return JSVAL_TO_INT(JS_ARGV(cx, vp)[i]); }
-const jschar* JSh_ArgvString(JSContext* cx, jsval* vp, int i)
-{
-	JSString* jsStr = JSVAL_TO_STRING(JS_ARGV(cx, vp)[i]);
-    return getMarshalStringFromJSString(cx, jsStr);
-}
-const char* JSh_ArgvStringUTF8(JSContext* cx, jsval* vp, int i)
-{
-	JSString* jsStr = JSVAL_TO_STRING(JS_ARGV(cx, vp)[i]);
-	const char* rt = JS_EncodeStringToUTF8(cx, jsStr);
-	return rt;
-}
-JSObject* JSh_ArgvObject(JSContext* cx, jsval* vp, int i)
-{
-	jsval* pVal = &(JS_ARGV(cx, vp)[i]);
-	if (pVal->isObject())
-		return JSVAL_TO_OBJECT(*pVal);
-	else
-		return 0;
-}
-JSFunction* JSh_ArgvFunction(JSContext* cx, jsval* vp, int i) {
-	jsval val = (JS_ARGV(cx, vp)[i]);
-	if (!val.isObject())
-		return 0;
-
-	JSObject* obj = JSVAL_TO_OBJECT(val);
-	if (!JS_ObjectIsFunction(cx, obj))
-		return 0;
-
-	return JS_ValueToFunction(cx, JS::RootedValue(cx, val));
-}
-
-bool JSh_ArgvFunctionValue(JSContext* cx, jsval* vp, int i, jsval* pval)
-{
-	JS::RootedValue nsval(cx);
-	nsval = (JS_ARGV(cx, vp)[i]);
-
-	JS::RootedValue ns(cx);
-	if (!JS_ConvertValue(cx, nsval, JSTYPE_FUNCTION, &ns))
-		return false;
-
-	*pval = ns;
-
-	return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-JSScript* JSh_CompileScript(JSContext *cx, JSObject* global, const char *ascii, size_t length, const char* filename, size_t lineno)
-{
-	JS::CompileOptions options(cx);
-	options.setUTF8(true).setFileAndLine(filename, lineno);
-	return JS_CompileScript(cx, JS::RootedObject(cx, global), ascii, length, options);
-}
-bool JSh_ExecuteScript(JSContext *cx, JSObject *obj, JSScript *script, jsval *rval)
-{
-	return JS_ExecuteScript(cx, obj, script, rval);
-}
-// this function is useless
-JSFunction* JSh_GetFunction(JSContext* cx, JSObject* obj, const char* name)
-{
-	JS::RootedValue nsval(cx);
-	JS::RootedObject ns(cx);
-	if (!JS_GetProperty(cx, obj, name, &nsval))
-		return 0;
-
-	JSFunction* fun = JS_ValueToFunction(cx, nsval);
-	return fun;
-}
-bool JSh_GetFunctionValue(JSContext* cx, JSObject* obj, const char* name, jsval* val)
-{
-	JS::RootedValue nsval(cx);
-	if (!JS_GetProperty(cx, obj, name, &nsval))
-		return false;
-
-	if (JSVAL_IS_VOID(nsval))
-		return false;
-
-	JS::RootedValue ns(cx);
-	if (!JS_ConvertValue(cx, nsval, JSTYPE_FUNCTION, &ns))
-		return false;
-
-	*val = ns;
-	return true;
-}
-
-//      bool JS_ConvertValue(JSContext *cx, JS::HandleValue v, JSType type, JS::MutableHandleValue vp);
-//      bool JS_ValueToObject(JSContext *cx, JS::HandleValue v, JS::MutableHandleObject objp);
-JSFunction* JSh_ValueToFunction(JSContext *cx, jsval* v)
-{
-	JS::RootedValue rval(cx);
-	rval = *v;
-	JS::HandleValue hval(&rval);
-	return JS_ValueToFunction(cx, hval);
-}
-JSFunction* JSh_ValueToConstructor(JSContext *cx, jsval* v)
-{
-	JS::RootedValue rval(cx);
-	rval = *v;
-	JS::HandleValue hval(&rval);
-	return JS_ValueToConstructor(cx, hval);
 }
 
 #ifdef ENABLE_JS_DEBUG
@@ -368,7 +143,7 @@ struct SplitUtil
     }
 };
 // TODO cache?
-MOZ_API JSObject* GetJSTableByName(char* name)
+JSObject* GetJSTableByName(char* name)
 {
     SplitUtil split(name, ".");
     const char* n = split.next();
@@ -405,13 +180,45 @@ JSObject* getObjCtorPrototype(JS::HandleObject obj)
 	return 0;
 }
 
-JSObject* newObject(JS::HandleObject prototypeObj, JSFinalizeOp finalizeOp)
+bool attachFinalizerObject(OBJID id)
 {
-	JSClass* jsClass = &qiucw_class;
-	jsClass->finalize = finalizeOp;
-	JSObject* obj = JS_NewObject(g_cx, jsClass, prototypeObj/* proto */, 0/* parentProto */);
-	return obj;
+    JS::RootedObject obj(g_cx, objMap::id2JSObj(id));
+    if (obj)
+    {
+        JS::RootedObject fObj(g_cx, JS_NewObject(g_cx, &class_with_finalizer, 0, 0));
+        JS_SetPrivate(fObj, (void*)id);
+        JS::RootedValue val(g_cx);
+        val.setObject(*fObj);
+        JS_DefineProperty(g_cx, obj, "__just_for_finalize", val, 0/* getter */, 0/* setter */, 0/* attr */);
+        return true;
+    }
+    return false;
 }
+
+/*
+几个操作说明，他们达到相同的目的
+
+A. JS: new GameObject.ctor()
+-------------------------------------
+1) C#: GameObject_GameObject1
+2)   C#: 对传进来的 _this 调用 attachFinalizerObject
+3)   C: 添加 jsID -> csObj 的对应关系
+
+
+B. 当C#中某个操作需要返回一个对象给JS时：
+-------------------------------------
+1) C#: JSDataExchangeMgr.setObject
+2)   C#: 调用 createJSClassObject("GameObject")
+3)     C: 创建一个普通对象 jsObj，设置 proto = GameObject.ctor.prototype
+4)      C: 对 jsObj 设置 attachFinalizerObject
+
+
+C. 当 JSSerizlizer 需要生成一个对象时：
+-------------------------------------
+1) 调用 newJSClassObject("GameObject")
+2) 接下去 A 的步骤
+
+*/
 
 //
 // 创建一个JS类对象
@@ -420,11 +227,14 @@ JSObject* newObject(JS::HandleObject prototypeObj, JSFinalizeOp finalizeOp)
 // TODO finalizer ?
 //
 // 假设 name = GameObject
-// 做的事情其实就是  new GameObject.ctor()
+// 操作：
+// 新增一个JS对象，将其 proto 设置为 GameObject.ctor.prototype
+// 并设置 finalizer
 // 并把这个对象存起来  返回ID
 // 
-//
-MOZ_API OBJID NewJSClassObject(char* name)
+// 注意：这个操作有别于 new GameObject.ctor()，new GameObject.ctor() 是会调用到C#去创建 C#对象，我们这里只是单纯的JS对象
+// 
+MOZ_API OBJID createJSClassObject(char* name)
 {
 	JS::RootedObject _t(g_cx);
     
@@ -432,22 +242,31 @@ MOZ_API OBJID NewJSClassObject(char* name)
     {
         JS::RootedObject tableObj(g_cx, _t);
 		JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
-		JS::RootedObject jsObj(g_cx, newObject(prototypeObj, g_finalizer));
-
+		JS::RootedObject jsObj(g_cx, JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, 0/* parentProto */));
+        
 		OBJID id = objMap::add(jsObj);
+        attachFinalizerObject(id);
 		return id;
+    }
+    return 0;
+}
+MOZ_API OBJID newJSClassObject(const jschar* name)
+{
+    JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, name));
 
-//         if (_t = JSh_NewObjectAsClass(g_cx, tableObj, "ctor", 0))
-//         {
-//             JS::RootedObject jsObj(g_cx, _t);
-//             JS::RootedObject nativeObj(g_cx, JSh_NewMyClass(g_cx, g_finalizer));
-//             JS::RootedValue val(g_cx);
-//             val.setObject(*nativeObj);
-//             JS_SetProperty(g_cx, jsObj, "__nativeObj", val);
-// 
-//             OBJID id = objMap::add(jsObj, nativeObj);
-//             return id;
-//         }
+    JS::Value val;
+    val.setString(jsString);
+
+    JS::Value valRet;
+    if (JS_CallFunctionName(g_cx, g_global, "jsb_CallObjectCtor", 1, &val, &valRet))
+    {
+        if (valRet.isObject())
+        {
+            JS::RootedObject obj(g_cx, &valRet.toObject());
+            OBJID id = objMap::add(obj);
+            attachFinalizerObject(id);
+            return id;
+        }
     }
     return 0;
 }
@@ -473,6 +292,20 @@ MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
     return true;
 }
 
+void registerCS(JSNative req)
+{
+    JS::RootedObject CS_obj(g_cx, JS_NewObject(g_cx, &normal_class, 0, 0));
+    JS::Value val;
+    val.setObject(*CS_obj);
+    JS_DefineProperty(g_cx, g_global, "CS", val, 0/* getter */, 0/* setter */, 0/* attr */);
+    JS_DefineFunction(g_cx, CS_obj, "Call", JSCall, 0/* narg */, 0);
+    JS_DefineFunction(g_cx, CS_obj, "require", req, 0/* narg */, 0);
+
+    ppCSObj = new JSObject*;
+    *ppCSObj = CS_obj;
+    JS_AddObjectRoot(g_cx, ppCSObj);
+}
+
 // 
 // 返回0表示没错
 //
@@ -480,9 +313,9 @@ JSCompartment* oldCompartment = 0;
 extern CSEntry csEntry;
 MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req)
 {
-    JSRuntime* rt;
-    JSContext* cx;
-    JSObject* global;
+    JSRuntime*& rt = g_rt;
+    JSContext*& cx = g_cx;
+    JSObject*& global = g_global;
 
     if (!JS_Init())
     {
@@ -509,23 +342,8 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req)
     JS_InitReflect(cx, global);
     csEntry = entry;
 
-    //
-    // register CS
-    //
-    JSClass* jsClass = JSh_NewClass("CS", 0/* flag */, 0/* finalizer */);
-    JS::RootedObject CS_obj(g_cx, JSh_InitClass(cx, global, jsClass));
-    JS_DefineFunction(cx, CS_obj, "Call", JSCall, 0/* narg */, 0);
-    JS_DefineFunction(cx, CS_obj, "require", req, 0/* narg */, 0);
-    ppCSObj = new JSObject*;
-    *ppCSObj = CS_obj;
-    JS_AddObjectRoot(g_cx, ppCSObj);
-
+    registerCS(req);
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
-
-    // 赋值全局变量
-    g_rt = rt;
-    g_cx = cx;
-    g_global = global;
     return 0;
 }
 
@@ -542,6 +360,10 @@ MOZ_API void ShutdownJSEngine()
 	JS_DestroyContext(g_cx);
 	JS_DestroyRuntime(g_rt);
 	JS_ShutDown();
+
+    g_cx = 0;
+    g_rt = 0;
+    g_global = 0;
 }
 
 MOZ_API bool setProperty( OBJID id, const char* name, int iMap )
@@ -593,6 +415,20 @@ MOZ_API void moveTempVal2Arr( int i )
 {
     JS::RootedValue val(g_cx, valTemp);
     valueArr::add(i, val);
+}
+MOZ_API void moveTempVal2Map( )
+{
+    JS::RootedValue val(g_cx, valTemp);
+    valueMap::add(val);
+}
+
+MOZ_API void removeValFromMap( int i )
+{
+    valueMap::remove(i);
+}
+MOZ_API bool moveValFromMap2Arr(int iMap, int iArr)
+{
+    return valueMap::moveFromMap2Arr(iMap, iArr);
 }
 
 JSObject** ppCSObj = 0;

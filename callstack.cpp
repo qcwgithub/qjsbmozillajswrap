@@ -762,7 +762,7 @@ void setArray(eSetType e, int count)
 
 MOZ_API bool isVector2( int i )
 {
-    JS::RootedValue val(g_cx, JS_ARGV(g_cx, g_vp)[i]);
+    JS::RootedValue val(g_cx, CallArg(i));
     if (val.isObject())
     {
         JS::RootedObject obj(g_cx, &val.toObject());
@@ -781,7 +781,7 @@ MOZ_API bool isVector2( int i )
 
 MOZ_API bool isVector3( int i )
 {
-    JS::RootedValue val(g_cx, JS_ARGV(g_cx, g_vp)[i]);
+    JS::RootedValue val(g_cx, CallArg(i));
     if (val.isObject())
     {
         JS::RootedObject obj(g_cx, &val.toObject());
