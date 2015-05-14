@@ -376,10 +376,10 @@ void setArray(eSetType e, int count)
         JS::RootedValue val(g_cx, valueArr::arr[i]);
         JS_SetElement(g_cx, arrObj, i, &val);
     }
+    // clear value array
+    valueArr::clear();
 
 	JS::Value val;
 	val.setObjectOrNull(arrObj);
 	setVal(e, val);
-
-    // TODO clear arrHeapObj
 }

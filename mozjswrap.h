@@ -9,6 +9,7 @@
 #endif
 
 #include "jsapi.h"
+//#include "js/tracer.h"
 #include <vector>
 #include <map>
 using namespace std;
@@ -35,12 +36,6 @@ extern JS::Heap<JS::Value> valFunRet;
 extern JS::Heap<JS::Value> valTemp;
 extern JSObject** ppCSObj;
 extern FUNCTIONID jsErrorEntry;
-
-struct stHeapObj
-{
-    JS::Heap<JSObject*>* heapJSObj;
-    //JSObject* jsObj; // old obj, just remember here
-};
 
 extern "C"
 {
@@ -183,13 +178,33 @@ extern "C"
 }
 
 extern CSEntry csEntry;
+/*
+
+1) object with finalize will be removed from objMap when collected
+2) but not all objects are with finalize
+3) what's the value of stHeapObj after object being collected?
+
+*/
+
+struct stHeapObj
+{
+    JS::Heap<JSObject*> obj;
+    stHeapObj(){}
+    stHeapObj(JS::HandleObject o){ obj = o; }
+};
+
+//typedef JS::Heap<JSObject*> stHeapObj;
 
 class objMap
 {
-    static map<OBJID, stHeapObj> mMap;
+    typedef map<OBJID, stHeapObj > OBJMAP;
+    typedef OBJMAP::iterator OBJMAPIT;
+
+    static OBJMAP mMap;
     static OBJID lastID;
 
 public:
+    static void trace(JSTracer *trc);
     static OBJID add(JS::HandleObject jsObj);
     static bool remove(OBJID id);
     static OBJID jsObj2ID(JS::HandleObject jsObj, bool autoAdd = false);
@@ -201,26 +216,43 @@ class valueArr
 public:
     static JS::Heap<JS::Value>* arr;
 private:
-    static int size;
+    static int Capacity;
     static int lastIndex;
     static JS::Heap<JS::Value>* makeSureArrHeapObj(int index);
 
 public:
+    static void trace(JSTracer *trc);
     static void add(int i, JS::HandleValue val);
     static void clear();
 };
 
+
+/*
+
+1) getFunction adds a function value to map, but never remove it
+2) function value may exist here, and in valueRoot at the same time
+
+*/
+
+// struct stHeapValue
+// {
+//     JS::Heap<JS::Value> val;
+//     stHeapValue(){}
+//     stHeapValue(JS::HandleValue v){ val = v; }
+// };
+
 class valueMap
 {
-    // TODO 所有存在这里的都要立即删除
-    // （不一定）
-    static std::map<int, JS::Heap<JS::Value>* > mMap;
+    typedef map<int, JS::Heap<JS::Value>* > VALUEMAP;
+    typedef VALUEMAP::iterator VALUEMAPIT;
+    static VALUEMAP mMap;
     static int index;
 public:
+    static void trace(JSTracer *trc);
     static int add(JS::HandleValue val);
     static int addFunction(JS::HandleValue val);
     static bool get(int i, JS::Value* pVal);
-    static void remove( int index );
+    static bool remove( int i );
     static bool moveFromMap2Arr(int iMap, int iArr);
 };
 

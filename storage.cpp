@@ -3,18 +3,23 @@
 // objMap
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-map<OBJID, stHeapObj> objMap::mMap;
+objMap::OBJMAP objMap::mMap;
 OBJID objMap::lastID = 1; // starts from 1, 0 means nothing
+
+void objMap::trace(JSTracer *trc)
+{
+//     OBJMAPIT it = mMap.begin();
+//     for (; it != mMap.end(); it++)
+//     {
+//         JS::Heap<JSObject*>* p = &it->second.obj;
+//         JS_CallHeapObjectTracer(trc, p, "");
+//     }
+}
 
 OBJID objMap::add(JS::HandleObject jsObj)
 {
-    stHeapObj st;
-    {
-        st.heapJSObj = new JS::Heap<JSObject*>(jsObj);
-        //st.jsObj = jsObj;
-    }
     OBJID id = lastID++;
-    mMap[id] = st;
+    mMap[id] = stHeapObj(jsObj);
     return id;
 }
 
@@ -24,10 +29,10 @@ OBJID objMap::jsObj2ID(JS::HandleObject jsObj, bool autoAdd)
 	{
 		return 0;
 	}
-    map<OBJID, stHeapObj>::iterator it = mMap.begin();
+    OBJMAPIT it = mMap.begin();
     for (; it != mMap.end(); it++)
     {
-        if (*(it->second.heapJSObj) == jsObj)
+        if (it->second.obj == jsObj)
         {
             return it->first;
         }
@@ -41,23 +46,19 @@ OBJID objMap::jsObj2ID(JS::HandleObject jsObj, bool autoAdd)
 
 JSObject* objMap::id2JSObj(OBJID id)
 {
-    map<OBJID, stHeapObj>::iterator it = mMap.find(id);
+    OBJMAPIT it = mMap.find(id);
     if (it != mMap.end())
     {
-        return *(it->second.heapJSObj);
+        return it->second.obj;
     }
     return 0;
 }
 
 bool objMap::remove(OBJID id)
 {
-    map<OBJID, stHeapObj>::iterator it = mMap.find(id);
+    OBJMAPIT it = mMap.find(id);
     if (it != mMap.end())
     {
-        stHeapObj& st = it->second;
-
-        if (st.heapJSObj != 0) delete st.heapJSObj;
-
         mMap.erase(it);
         return true;
     }
@@ -73,12 +74,12 @@ bool objMap::remove(OBJID id)
 // 2) Function Arguments
 // 
 JS::Heap<JS::Value>* valueArr::arr = 0;
-int valueArr::size = 0;
+int valueArr::Capacity = 0;
 int valueArr::lastIndex = -1;
 JS::Heap<JS::Value>* valueArr::makeSureArrHeapObj(int index)
 {
     int size = index + 1;
-    int& S = size;
+    int& S = Capacity;
     if (arr == 0 || S < size) 
     {
         int oldS = S;
@@ -87,37 +88,57 @@ JS::Heap<JS::Value>* valueArr::makeSureArrHeapObj(int index)
         while (S < size)
             S *= 2;
 
-        JS::Heap<JS::Value>* arr = new JS::Heap<JS::Value>[size];
+        // copy data
+        JS::Heap<JS::Value>* _arr = new JS::Heap<JS::Value>[size];
         if (index > 0)
         {
             int N = min(oldS - 1, index);
             for (int i = 0; i < N; i++)
-                arr[i] = arr[i];
+                _arr[i] = arr[i];
         }
-        arr = arr;
+        if (arr)
+        {
+            delete arr;
+        }
+        arr = _arr;
     }
     return arr;
 }
 
+void valueArr::trace(JSTracer *trc)
+{
+//     if (lastIndex >= 0)
+//     {
+//         int N = min(lastIndex, Capacity - 1);
+//         for (int i = 0; i <= N; i++)
+//         {
+//             JS_CallHeapValueTracer(trc, &arr[i], "");
+//         }
+//     }
+}
+
 void valueArr::add(int i, JS::HandleValue val)
 {
-    JS::Heap<JS::Value>* arr = makeSureArrHeapObj(i);
-    arr[i] = val;
     lastIndex = i;
+    JS::Heap<jsval>* arr = makeSureArrHeapObj(i);
+    arr[i] = val;
 }
 
 void valueArr::clear()
 {
-    int& index = lastIndex;
-    if (index >= 0)
-    {
-        JS::RootedValue val(g_cx);
-        for (int i = 0; i <= index; i++)
-        {
-            arr[i] = val;
-        }
-        index = -1;
-    }
+    lastIndex = -1;
+//     int& index = lastIndex;
+//     if (index >= 0)
+//     {
+//         int N = min(index, Capacity - 1);
+//         JS::Value val;
+//         val.setUndefined();
+//         for (int i = 0; i <= N; i++)
+//         {
+//             arr[i] = val;
+//         }
+//         index = -1;
+//     }
 }
 
 // objRoot
@@ -156,18 +177,29 @@ bool objRoot::remove( OBJID id )
 
 // TODO 所有存在这里的都要立即删除
 // （不一定）
-std::map<int, JS::Heap<JS::Value>* > valueMap::mMap;
-typedef std::map<int, JS::Heap<JS::Value>* >::iterator valueMapIt;
+valueMap::VALUEMAP valueMap::mMap;
 int valueMap::index = 1;
 
-void valueMap::remove( int index )
+bool valueMap::remove( int i )
 {
-    valueMapIt it = mMap.find(index);
+    VALUEMAPIT it = mMap.find(i);
     if (it != mMap.end())
     {
         delete it->second;
         mMap.erase(it);
+        return true;
     }
+    return false;
+}
+
+void valueMap::trace(JSTracer *trc)
+{
+//     VALUEMAPIT it = mMap.begin();
+//     for (; it != mMap.end(); it++)
+//     {
+//         JS::Heap<JS::Value>* p = it->second;
+//         JS_CallHeapValueTracer(trc, p, "");
+//     }
 }
 
 int valueMap::add(JS::HandleValue val)
@@ -189,7 +221,7 @@ int valueMap::addFunction(JS::HandleValue val)
 
 bool valueMap::get(int i, JS::Value* pVal)
 {
-    valueMapIt it = mMap.find(i);
+    VALUEMAPIT it = mMap.find(i);
     if (it != mMap.end())
     {
         *pVal = it->second->get();
@@ -200,7 +232,7 @@ bool valueMap::get(int i, JS::Value* pVal)
 
 bool valueMap::moveFromMap2Arr(int iMap, int iArr)
 {
-    valueMapIt it = mMap.find(iMap);
+    VALUEMAPIT it = mMap.find(iMap);
     if (it != mMap.end())
     {
         JS::RootedValue val(g_cx, it->second->get());

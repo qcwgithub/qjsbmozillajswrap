@@ -121,7 +121,7 @@ void updateDebugger() {}
 void cleanupDebugger() {}
 bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file) { return false;}
 void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file) {}
-MOZ_API void JSh_DumpBacktrace( JSContext* cx ) {}
+//MOZ_API void JSh_DumpBacktrace( JSContext* cx ) {}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -271,22 +271,22 @@ MOZ_API bool RemoveJSClassObject(OBJID odjID)
 {
     return objMap::remove(odjID);
 }
-MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
-{
-    JS::RootedObject obj(g_cx, objMap::id2JSObj(objID));
-    if (obj == 0)
-        return false;
-
-    JS::RootedValue val(g_cx);
-    JS_GetProperty(g_cx, obj, functionName, &val);
-
-    if (val.isNullOrUndefined())
-        return false;
-
-    if (!JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &val))
-        return false;
-    return true;
-}
+// MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
+// {
+//     JS::RootedObject obj(g_cx, objMap::id2JSObj(objID));
+//     if (obj == 0)
+//         return false;
+// 
+//     JS::RootedValue val(g_cx);
+//     JS_GetProperty(g_cx, obj, functionName, &val);
+// 
+//     if (val.isNullOrUndefined())
+//         return false;
+// 
+//     if (!JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &val))
+//         return false;
+//     return true;
+// }
 
 void registerCS(JSNative req)
 {
@@ -300,6 +300,15 @@ void registerCS(JSNative req)
     ppCSObj = new JSObject*;
     *ppCSObj = CS_obj;
     JS_AddObjectRoot(g_cx, ppCSObj);
+}
+
+void myJSTraceDataOp(JSTracer *trc, void *data)
+{
+//    JS_CallHeapValueTracer(trc, &valFunRet, "");
+//    JS_CallHeapValueTracer(trc, &valTemp, "");
+    objMap::trace(trc);
+    valueArr::trace(trc);
+    valueMap::trace(trc);
 }
 
 // 
@@ -338,6 +347,8 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
     csEntry = entry;
 	::onObjCollected = onObjCollected;
 
+    //JS_AddExtraGCRootsTracer(rt, myJSTraceDataOp, 0/* data */);
+
     registerCS(req);
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
     return 0;
@@ -346,6 +357,7 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
 
 MOZ_API void ShutdownJSEngine()
 {
+    //JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
 	JS_LeaveCompartment(g_cx, oldCompartment);
 
 	// TODO
@@ -516,7 +528,6 @@ MOZ_API bool addValueRoot(int id)
         return false;
 
     JS::RootedValue val(g_cx, _v);
-
     return valueRoot::add(val);
 }
 MOZ_API bool removeValueRoot(int id)
