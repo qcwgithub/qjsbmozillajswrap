@@ -31,7 +31,6 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     //
     // 计算参数个数，不算末尾的 undefined
     //
-    // TODO check
     actualArgc = argc;
     while (actualArgc > 0 && ArgVal(actualArgc - 1).isUndefined())
     {
@@ -322,44 +321,34 @@ void setString(eSetType e, const jschar* value)
 	JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
 	setVal(e, STRING_TO_JSVAL(jsString));
 }
-void valSetVector2(JS::Value* pval, float x, float y)
-{
-    JS::RootedObject obj(g_cx, &pval->toObject());
-
-    JS::RootedValue val(g_cx);
-
-    val.setDouble(x);
-    JS_SetProperty(g_cx, obj, "x", val);
-
-    val.setDouble(y);
-    JS_SetProperty(g_cx, obj, "y", val);
-}
 void setVector2(eSetType e, float x, float y)
 {
-	JS::Value val;
-	valSetVector2(&val, x, y);
-	setVal(e, val);
-}
-void valSetVector3(JS::Value* pval, float x, float y, float z)
-{
-    JS::RootedObject obj(g_cx, &pval->toObject());
+    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector2"));
+    if (jsObj)
+    {
+        JS::RootedValue val(g_cx);
 
-    JS::RootedValue val(g_cx);
+        val.setDouble(x); JS_SetProperty(g_cx, jsObj, "x", val);
+        val.setDouble(y); JS_SetProperty(g_cx, jsObj, "y", val);
 
-    val.setDouble(x);
-    JS_SetProperty(g_cx, obj, "x", val);
-
-    val.setDouble(y);
-    JS_SetProperty(g_cx, obj, "y", val);
-
-    val.setDouble(z);
-    JS_SetProperty(g_cx, obj, "z", val);
+        val.setObject(*jsObj);
+        setVal(e, val);
+    }
 }
 void setVector3(eSetType e, float x, float y, float z)
 {
-	JS::Value val;
-	valSetVector3(&val, x, y, z);
-	setVal(e, val);
+    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector3"));
+    if (jsObj)
+    {
+        JS::RootedValue val(g_cx);
+
+        val.setDouble(x); JS_SetProperty(g_cx, jsObj, "x", val);
+        val.setDouble(y); JS_SetProperty(g_cx, jsObj, "y", val);
+        val.setDouble(z); JS_SetProperty(g_cx, jsObj, "z", val);
+
+        val.setObject(*jsObj);
+        setVal(e, val);
+    }
 }
 void setObject(eSetType e, OBJID id)
 {

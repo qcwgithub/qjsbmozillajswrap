@@ -139,9 +139,7 @@ extern "C"
     MOZ_API void setIntPtr  (eSetType e, long long v);
     MOZ_API void setBoolean(eSetType e, bool v);
     MOZ_API void setString(eSetType e, const jschar* value);
-    void valSetVector2(JS::Value* pval, float x, float y);
     MOZ_API void setVector2(eSetType e, float x, float y);
-    void valSetVector3(JS::Value* pval, float x, float y, float z);
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
     MOZ_API void setObject(eSetType e, OBJID id);
     MOZ_API void setArray(eSetType e, int count);
@@ -177,6 +175,7 @@ extern "C"
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected);
     MOZ_API bool initErrorHandler();
     MOZ_API void ShutdownJSEngine();
+    JSObject* _createJSClassObject(char* name);
     MOZ_API OBJID createJSClassObject(char* name);
     MOZ_API bool attachFinalizerObject(OBJID id);
     MOZ_API OBJID newJSClassObject(const jschar* name);
@@ -242,6 +241,58 @@ public:
     static bool remove(int i);
 };
 
+template<class T>
+class variableLengthArray
+{
+    T* arr;
+    int length;
+public:
+    variableLengthArray() : arr(0), length(0){}
+    T* get(int len)
+    {
+        // no copy
+        if (arr == 0 || this->length < len)
+        {
+            if (arr) delete arr;
+            arr = new T[len];
+            this->length = len;
+        }
+        return arr;
+    }
+};
+
+struct SplitUtil 
+{
+    static variableLengthArray<char> sArr;
+    SplitUtil(char* s, const char* sp) 
+    { 
+        int len = strlen(s);
+        char* _s = sArr.get(len + 1);
+        memcpy(_s, s, len);
+        _s[len] = 0;
+
+        str = _s; 
+        splitStr = sp;
+    }
+    char* str;
+    const char* splitStr;
+    const char* next() {
+        char* buf = strstr(str, splitStr);
+        if (buf) {
+            buf[0] = 0;
+            const char* ret = str;
+            str = buf + strlen(splitStr);
+            return ret;
+        }
+        if (str[0])
+        {
+            const char* ret = str;
+            str += strlen(str);
+            return ret;
+        }
+        return 0;
+    }
+};
 // class argUtil
 // {
 // public:

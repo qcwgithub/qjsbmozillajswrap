@@ -126,28 +126,8 @@ MOZ_API void JSh_DumpBacktrace( JSContext* cx ) {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct SplitUtil 
-{
-    SplitUtil(char* s, const char* sp) { str = s; splitStr = sp;}
-    char* str;
-    const char* splitStr;
-    const char* next() {
-        char* buf = strstr(str, splitStr);
-        if (buf) {
-            buf[0] = 0;
-            const char* ret = str;
-            str = buf + strlen(splitStr);
-            return ret;
-        }
-        if (str[0])
-        {
-            const char* ret = str;
-            str += strlen(str);
-            return ret;
-        }
-        return 0;
-    }
-};
+variableLengthArray<char> SplitUtil::sArr;
+
 // TODO cache?
 JSObject* GetJSTableByName(char* name)
 {
@@ -240,19 +220,28 @@ C. 当 JSSerizlizer 需要生成一个对象时：newJSClassObject
 // 
 // 注意：这个操作有别于 new GameObject.ctor()，new GameObject.ctor() 是会调用到C#去创建 C#对象，我们这里只是单纯的JS对象
 // 
-MOZ_API OBJID createJSClassObject(char* name)
+JSObject* _createJSClassObject(char* name)
 {
-	JS::RootedObject _t(g_cx);
-    
+    JS::RootedObject _t(g_cx);
+
     if (_t = GetJSTableByName(name))
     {
         JS::RootedObject tableObj(g_cx, _t);
-		JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
-		JS::RootedObject jsObj(g_cx, JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, 0/* parentProto */));
-        
-		OBJID id = objMap::add(jsObj);
+        JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
+        JS::RootedObject jsObj(g_cx, JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, 0/* parentProto */));
+
+        return jsObj;
+    }
+    return 0;
+}
+MOZ_API OBJID createJSClassObject(char* name)
+{
+    JS::RootedObject jsObj(g_cx, _createJSClassObject(name));
+    if (jsObj)
+    {
+        OBJID id = objMap::add(jsObj);
         attachFinalizerObject(id);
-		return id;
+        return id;
     }
     return 0;
 }
@@ -457,22 +446,10 @@ bool initErrorHandler()
     return false;
 }
 
-JS::Value* arrFunArg = 0;
-int arrFunArg_len = 0;
-JS::Value* makeSureFunArgArr(int count)
-{
-    if (arrFunArg == 0 ||
-        arrFunArg_len < count)
-    {
-        if (arrFunArg) delete arrFunArg;
-        arrFunArg = new JS::Value[count];
-        arrFunArg_len = count;
-    }
-    return arrFunArg;
-}
-
 MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount)
 {
+    static variableLengthArray<JS::Value> arrFunArg;
+
     JS::RootedObject jsObj(g_cx, objMap::id2JSObj(jsObjID));
     if (jsObj == 0)
     {
@@ -491,7 +468,7 @@ MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount)
 
     if (jsErrorEntry > 0)
     {
-        JS::Value* arr = makeSureFunArgArr(argCount + 2);
+        JS::Value* arr = arrFunArg.get(argCount + 2);
         arr[0].setObjectOrNull(jsObj);
         arr[1] = fval;
         for (int i = 0; i < argCount; i++)
@@ -511,7 +488,7 @@ MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount)
         else
         {
             // TODO 
-            JS::Value* arr = makeSureFunArgArr(argCount);
+            JS::Value* arr = arrFunArg.get(argCount);
             for (int i = 0; i < argCount; i++)
             {
                 arr[i] = valueArr::arr[i];
