@@ -41,15 +41,16 @@ JSRuntime* g_rt = 0;
 JSContext* g_cx = 0;
 JSObject* g_global = 0;
 OnObjCollected onObjCollected = 0;
+bool shutingDown = false;
 void sc_finalize(JSFreeOp* freeOp, JSObject* obj)
 {
     int id = (int)JS_GetPrivate(obj);
-	objMap::remove(id);
 
-	if (onObjCollected) 
-	{
-		onObjCollected(id);
-	}
+    bool bRemoved = valueMap::removeByID(id, true);
+    if (!shutingDown) Assert(bRemoved, "finalize remove fail");
+
+    // notify C#
+    onObjCollected(id);
 }
 
 static JSClass global_class =
@@ -146,7 +147,10 @@ JSObject* GetJSTableByName(char* name)
             n = split.next();
         }
         else
+        {
+            Assert(false, "GetJSTableByName fail");
             return 0;
+        }
     }
     return obj;
 }
@@ -163,22 +167,34 @@ JSObject* getObjCtorPrototype(JS::HandleObject obj)
 			return &val.toObject();
 		}
 	}
+    Assert(false, "getObjCtorPrototype fail");
 	return 0;
 }
 
-bool attachFinalizerObject(OBJID id)
+/*
+
+why do we need to attach finalizeOp on object?
+there are C# objects stored, we have to tell C# to release those objects when js object collected
+
+there are now 2 places calling this function:
+1) C# object constructor
+   example: UnityEngine_GameObjectGenerated.GameObject_GameObject1
+   when constructor is called, there is already a js object in hand, so, yes, add a finalizeOp to it
+
+2) JSDataExchangeMgr.setObject 
+   it will call createJSClassObject
+
+*/
+bool attachFinalizerObject(MAPID id)
 {
-    JS::RootedObject obj(g_cx, objMap::id2JSObj(id));
-    if (obj)
-    {
-        JS::RootedObject fObj(g_cx, JS_NewObject(g_cx, &class_with_finalizer, 0, 0));
-        JS_SetPrivate(fObj, (void*)id);
-        JS::RootedValue val(g_cx);
-        val.setObject(*fObj);
-        JS_DefineProperty(g_cx, obj, "__just_for_finalize", val, 0/* getter */, 0/* setter */, 0/* attr */);
-        return true;
-    }
-    return false;
+    MGETOBJ1(id, obj, false);
+
+    JS::RootedObject fObj(g_cx, JS_NewObject(g_cx, &class_with_finalizer, 0, 0));
+    JS_SetPrivate(fObj, (void*)id);
+    JS::RootedValue val(g_cx);
+    val.setObject(*fObj);
+    JS_DefineProperty(g_cx, obj, "__just_for_finalize", val, 0/* getter */, 0/* setter */, 0/* attr */);
+    return true;
 }
 
 /*
@@ -234,43 +250,44 @@ JSObject* _createJSClassObject(char* name)
     }
     return 0;
 }
-MOZ_API OBJID createJSClassObject(char* name)
+// to create a C# object
+MOZ_API MAPID createJSClassObject(char* name)
 {
     JS::RootedObject jsObj(g_cx, _createJSClassObject(name));
     if (jsObj)
     {
-        OBJID id = objMap::add(jsObj);
+        JS::RootedValue val(g_cx);
+        val.setObject(*jsObj);
+        int id = valueMap::add(val);
         attachFinalizerObject(id);
         return id;
     }
     return 0;
 }
 // 如果说 JS ctor不会调用到C# 那么 createXXX newXXX 结果一样
-MOZ_API OBJID newJSClassObject(const jschar* name)
+MOZ_API int newJSClassObject(const jschar* name)
 {
     JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, name));
 
     JS::Value val;
     val.setString(jsString);
 
-    JS::Value valRet;
-    if (JS_CallFunctionName(g_cx, g_global, "jsb_CallObjectCtor", 1, &val, &valRet))
+    JS::Value _rval;
+    if (JS_CallFunctionName(g_cx, g_global, "jsb_CallObjectCtor", 1, &val, &_rval))
     {
-        if (valRet.isObject())
+        JS::RootedValue rval(g_cx, _rval);
+        if (rval.isObject())
         {
-            JS::RootedObject obj(g_cx, &valRet.toObject());
-            OBJID id = objMap::add(obj);
-            attachFinalizerObject(id);
-            return id;
+            return valueMap::add(rval);
+            // not need to add finalizeOp here
+            // if it's pure js object, .. OK
+            // if it's C# object, attachFinalizerObject will be called from C#
+            // attachFinalizerObject(id);
         }
     }
     return 0;
 }
 
-MOZ_API bool RemoveJSClassObject(OBJID odjID)
-{
-    return objMap::remove(odjID);
-}
 // MOZ_API bool IsJSClassObjectFunctionExist(OBJID objID, const char* functionName)
 // {
 //     JS::RootedObject obj(g_cx, objMap::id2JSObj(objID));
@@ -304,10 +321,6 @@ void registerCS(JSNative req)
 
 void myJSTraceDataOp(JSTracer *trc, void *data)
 {
-//    JS_CallHeapValueTracer(trc, &valFunRet, "");
-//    JS_CallHeapValueTracer(trc, &valTemp, "");
-    objMap::trace(trc);
-    valueArr::trace(trc);
     valueMap::trace(trc);
 }
 
@@ -347,17 +360,26 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
     csEntry = entry;
 	::onObjCollected = onObjCollected;
 
-    //JS_AddExtraGCRootsTracer(rt, myJSTraceDataOp, 0/* data */);
+    JS_AddExtraGCRootsTracer(rt, myJSTraceDataOp, 0/* data */);
 
     registerCS(req);
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
+    shutingDown = false;
+
     return 0;
 }
 
 
 MOZ_API void ShutdownJSEngine()
 {
-    //JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
+    shutingDown = true;
+
+    JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
+    idFunRet = 0;
+    idSave = 0;
+    valueMap::clear();
+    valueArr::clear(false);
+
 	JS_LeaveCompartment(g_cx, oldCompartment);
 
 	// TODO
@@ -374,40 +396,41 @@ MOZ_API void ShutdownJSEngine()
     g_global = 0;
 }
 
-MOZ_API bool setProperty( OBJID id, const char* name, int iMap )
+MOZ_API bool setProperty( MAPID id, const char* name, MAPID valueID )
 {
-    JS::RootedObject jsObj(g_cx, objMap::id2JSObj(id));
-    if (jsObj == 0)
-        return false;
+    MGETOBJ1(id, jsObj, false);
 
-    JS::Value _v;
-    if (!valueMap::get(iMap, &_v))
+    JS::RootedValue valValue(g_cx);
+    if (!valueMap::getVal(valueID, &valValue))
+    {
         return false;
+    }
 
-    JS::RootedValue val(g_cx, _v);
-    bool ret = JS_SetProperty(g_cx, jsObj, name, val);
-    return ret;
+    return JS_SetProperty(g_cx, jsObj, name, valValue);
 }
 
-MOZ_API bool getElement(OBJID id, int i)
+MOZ_API bool getElement(MAPID id, int i)
 {
-    JS::RootedObject jsObj(g_cx, objMap::id2JSObj(id));
-    if (jsObj == 0)
-        return false;
+    MGETOBJ1(id, obj, false);
 
     JS::RootedValue val(g_cx);
-    if (!JS_GetElement(g_cx, jsObj, i, &val))
+    if (!JS_GetElement(g_cx, obj, i, &val))
+    {
+        Assert(false, "JS_GetElement fail");
         return false;
+    }
 
-    valTemp = val;
+    idSave = valueMap::add(val);
     return true;
 }
 
-MOZ_API int getArrayLength(OBJID id)
+MOZ_API int getArrayLength(MAPID id)
 {
-    JS::RootedObject jsObj(g_cx, objMap::id2JSObj(id));
-    if (jsObj == 0)
+    JS::RootedValue valObj(g_cx);
+    if (!valueMap::getVal(id, &valObj))
         return false;
+
+    JS::RootedObject jsObj(g_cx, &valObj.toObject());
 
     uint32_t len = 0;
     JS_GetArrayLength(g_cx, jsObj, &len);
@@ -419,28 +442,26 @@ MOZ_API void gc()
     JS_GC(g_rt);
 }
 
-MOZ_API void moveTempVal2Arr( int i )
+MOZ_API void moveSaveID2Arr( int arrIndex )
 {
-    JS::RootedValue val(g_cx, valTemp);
-    valueArr::add(i, val);
+    valueArr::add(arrIndex, idSave);
 }
-MOZ_API void moveTempVal2Map( )
+MOZ_API MAPID getSaveID( )
 {
-    JS::RootedValue val(g_cx, valTemp);
-    valueMap::add(val);
+    return idSave;
 }
-
-MOZ_API void removeValFromMap( int i )
+MOZ_API void removeByID( MAPID id )
 {
-    valueMap::remove(i);
+    valueMap::removeByID(id, false);
 }
-MOZ_API bool moveValFromMap2Arr(int iMap, int iArr)
+MOZ_API bool moveID2Arr(int id, int arrIndex)
 {
-    return valueMap::moveFromMap2Arr(iMap, iArr);
+    valueArr::add(arrIndex, id);
+    return true;
 }
 
 JSObject** ppCSObj = 0;
-FUNCTIONID jsErrorEntry = 0;
+MAPID idErrorEntry = 0;
 bool initErrorHandler()
 {
     JS::RootedObject CS_obj(g_cx, *ppCSObj);
@@ -452,43 +473,54 @@ bool initErrorHandler()
     {
         JS::RootedValue fval(g_cx);
         JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &fval);
-        jsErrorEntry = valueMap::add(fval);
+        idErrorEntry = valueMap::add(fval);
         return true;
     }
     return false;
 }
 
-MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount)
+MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
 {
     static variableLengthArray<JS::Value> arrFunArg;
 
-    JS::RootedObject jsObj(g_cx, objMap::id2JSObj(jsObjID));
+//     JS::RootedObject jsObj(g_cx, 0);
+// 
+//     JS::RootedValue objVal(g_cx);
+//     if (valueMap::getVal(jsObjID, &objVal) &&
+//         objVal.isObject())
+//     {
+//         jsObj = &objVal.toObject();
+//     }
+
+    MGETOBJ0(jsObjID, jsObj);
     if (jsObj == 0)
     {
         // no error
     }
 
-    JS::Value _v;
-    if (!valueMap::get(funID, &_v))
+    JS::RootedValue fval(g_cx);
+    if (!valueMap::getVal(funID, &fval))
     {
+        Assert(false, "callFunctionValue: get function val fail");
         return false;
     }
 
-    JS::RootedValue fval(g_cx, _v);
     jsval retVal;
     bool ret;
 
-    if (jsErrorEntry > 0)
+    if (idErrorEntry > 0)
     {
         JS::Value* arr = arrFunArg.get(argCount + 2);
         arr[0].setObjectOrNull(jsObj);
         arr[1] = fval;
+        JS::RootedValue ele(g_cx);
         for (int i = 0; i < argCount; i++)
         {
-            arr[i + 2] = valueArr::arr[i];
+            valueMap::getVal(valueArr::arr[i], &ele);
+            arr[i + 2] = ele;
         }
-        JS::Value entryVal;
-        valueMap::get(jsErrorEntry, &entryVal);
+        JS::RootedValue entryVal(g_cx);
+        valueMap::getVal(idErrorEntry, &entryVal);
         ret = JS_CallFunctionValue(g_cx, *ppCSObj, entryVal, argCount + 2, arr, &retVal);
     }
     else
@@ -501,38 +533,29 @@ MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount)
         {
             // TODO 
             JS::Value* arr = arrFunArg.get(argCount);
+            JS::RootedValue ele(g_cx);
             for (int i = 0; i < argCount; i++)
             {
-                arr[i] = valueArr::arr[i];
+                valueMap::getVal(valueArr::arr[i], &ele);
+                arr[i] = ele;
             }
 
             ret = JS_CallFunctionValue(g_cx, jsObj, fval, argCount, arr, &retVal);
         }
     }
-    valFunRet = retVal;
+    JS::RootedValue rv(g_cx, retVal);
+    idFunRet = valueMap::add(rv);
     return ret;
 }
 
-MOZ_API bool addObjectRoot(int id)
+MOZ_API bool setTrace(MAPID id, bool bTrace)
 {
-    return objRoot::add(id);
+    return valueMap::setTrace(id, bTrace);
 }
-MOZ_API bool removeObjectRoot(int id)
-{
-    return objRoot::remove(id);
-}
-MOZ_API bool addValueRoot(int id)
-{
-    JS::Value _v;
-    if (!valueMap::get(id, &_v))
-        return false;
 
-    JS::RootedValue val(g_cx, _v);
-    return valueRoot::add(val);
-}
-MOZ_API bool removeValueRoot(int id)
+MOZ_API bool setTempTrace(MAPID id, bool bTempTrace)
 {
-    return valueRoot::remove(id);
+    return valueMap::setTempTrace(id, bTempTrace);
 }
 
 MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
@@ -542,12 +565,18 @@ MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
     options.setUTF8(true).setFileAndLine(filename, lineno);
     JS::RootedScript jsScript(g_cx, JS_CompileScript(g_cx, JS::RootedObject(g_cx, g_global), ascii, length, options));
     if (jsScript == 0)
+    {
+        Assert(false, "JS_CompileScript fail");
         return false;
+    }
 
     //JS::RootedValue val(g_cx);
     jsval val;
     if (!JS_ExecuteScript(g_cx, g_global, jsScript, &val))
+    {
+        Assert(false, "JS_ExecuteScript fail");
         return false;
+    }
 
     // val 不需要
 
@@ -561,7 +590,7 @@ MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
 const jschar* getArgString(jsval* vp, int i)
 {
     JS::RootedValue val(g_cx, JS_ARGV(g_cx, vp)[i]);
-
+    Assert(val.isString());
     JSString* jsStr = val.toString();
     if (jsStr)
     {
@@ -570,21 +599,29 @@ const jschar* getArgString(jsval* vp, int i)
     return 0;
 }
 
-MOZ_API FUNCTIONID getObjFunction(OBJID id, const char* fname)
+MOZ_API MAPID getObjFunction(MAPID id, const char* fname)
 {
-    JS::RootedObject obj(g_cx, objMap::id2JSObj(id));
-    if (obj == 0)
-    {
-        return 0;
-    }
+//     JS::RootedValue objVal(g_cx);
+//     if (!valueMap::getVal(id, &objVal) || !objVal.isObject())
+//         return 0;
+// 
+//     JS::RootedObject obj(g_cx, &objVal.toObject());
+//     if (obj == 0)
+//     {
+//         return 0;
+//     }
+
+    MGETOBJ1(id, obj, 0);
+
     JS::RootedValue val(g_cx);
     JS_GetProperty(g_cx, obj, fname, &val);
     if (val.isObject() && 
         JS_ObjectIsFunction(g_cx, &val.toObject()))
     {
-        FUNCTIONID id = valueMap::add(val);
-        return id;
+        return valueMap::add(val);
     }
+    // Assert(false, "getObjFunction fail");
+    // no error, function is not found
     return 0;
 }
 

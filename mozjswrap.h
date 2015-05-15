@@ -9,18 +9,26 @@
 #endif
 
 #include "jsapi.h"
-//#include "js/tracer.h"
+#include "js/tracer.h"
 #include <vector>
 #include <map>
 using namespace std;
 
 #ifdef _WINDOWS
+
+// 1
 #if defined(MOZ_JSWRAP_COMPILATION)
 #define MOZ_API __declspec( dllexport ) 
 #else
 #define MOZ_API __declspec( dllimport )
 #endif
+
+// 2
+#include <assert.h>
+#define Assert assert
+
 #else
+#define Assert
 #define MOZ_API
 #endif
 
@@ -28,14 +36,13 @@ extern JSRuntime* g_rt;
 extern JSContext* g_cx;
 extern JSObject* g_global;
 
-// C# 获取JS对象就是获取一个OBJID
-typedef int OBJID;
-typedef int FUNCTIONID;
+typedef int MAPID;
 
-extern JS::Heap<JS::Value> valFunRet;
-extern JS::Heap<JS::Value> valTemp;
+extern MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
+extern MAPID idSave; //往valueMap添加后得到的ID
+
 extern JSObject** ppCSObj;
-extern FUNCTIONID jsErrorEntry;
+extern MAPID idErrorEntry;
 
 extern "C"
 {
@@ -58,9 +65,9 @@ extern "C"
 
     // 第1个参数是个id
     // 因为会调用 setProperty 前面一定是用创建 JS 类的对象
-    MOZ_API bool setProperty(OBJID id, const char* name, int iMap);
-    MOZ_API bool getElement(OBJID id, int i);
-    MOZ_API int getArrayLength(OBJID id);
+    MOZ_API bool setProperty(MAPID id, const char* name, MAPID valueID);
+    MOZ_API bool getElement(MAPID id, int i);
+    MOZ_API int getArrayLength(MAPID id);
 
     MOZ_API void gc();
 
@@ -69,17 +76,17 @@ extern "C"
         GetArg = 0,
         GetArgRef = 1,
         GetJSFunRet = 2,
-        GetJsval = 3,
+        GetSaveAndRemove = 3,
     };
     enum eSetType
     {
         SetRval = 0,
         SetArgRef = 1,
-        SetJsval = 2,
+        SetSaveAndTempTrace = 2,
     };
 
     typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
-	typedef void (* OnObjCollected)(OBJID id);
+	typedef void (* OnObjCollected)(MAPID id);
     bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
     MOZ_API int getArgIndex();
@@ -114,7 +121,7 @@ extern "C"
     MOZ_API bool getVector2(eGetType e);
     void val2Vector3(JS::HandleValue pval);
     MOZ_API bool getVector3(eGetType e);
-    MOZ_API OBJID getObject(eGetType e);
+    MOZ_API int getObject(eGetType e);
     MOZ_API bool isFunction(eGetType e);
     MOZ_API int getFunction(eGetType e);
 
@@ -136,28 +143,26 @@ extern "C"
     MOZ_API void setString(eSetType e, const jschar* value);
     MOZ_API void setVector2(eSetType e, float x, float y);
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
-    MOZ_API void setObject(eSetType e, OBJID id);
-    MOZ_API void setArray(eSetType e, int count);
+    MOZ_API void setObject(eSetType e, int id);
+    MOZ_API void setArray(eSetType e, int count, bool bClear);
     MOZ_API void setFunction(eSetType e, int funID);
 
     MOZ_API bool isVector2(eGetType e);
     MOZ_API bool isVector3(eGetType e);
 
     // val movement
-    MOZ_API void moveTempVal2Arr( int i );
-    MOZ_API void moveTempVal2Map( );
-    MOZ_API void removeValFromMap( int i );
-    MOZ_API bool moveValFromMap2Arr(int iMap, int iArr);
+    MOZ_API void moveSaveID2Arr( int arrIndex );
+    MOZ_API MAPID getSaveID( );
+    MOZ_API void removeByID( MAPID id );
+    MOZ_API bool moveID2Arr(int id, int arrIndex);
 
-    MOZ_API bool callFunctionValue(OBJID jsObjID, int funID, int argCount);
-    MOZ_API bool addObjectRoot(int id);
-    MOZ_API bool removeObjectRoot(int id);
-    MOZ_API bool addValueRoot(int id);
-    MOZ_API bool removeValueRoot(int id);
+    MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount);
+    MOZ_API bool setTrace(MAPID id, bool bTrace);
+    MOZ_API bool setTempTrace(MAPID id, bool bTempTrace);
 
     // 目前仅用于 arg，不够用的话要再加 (GetType e) 参数
-    MOZ_API OBJID addArgObj2Map();
-    MOZ_API void removeObjFromMap(OBJID id);
+    MOZ_API MAPID addArgObj2Map();
+    MOZ_API void removeObjFromMap(MAPID id);
 
     //MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
     /////////////////////////////////////////////////////////////////////
@@ -165,74 +170,58 @@ extern "C"
     MOZ_API bool evaluate(const char* ascii, size_t length, const char* filename);
     MOZ_API const jschar* getArgString(jsval* vp, int i);
     MOZ_API void setRvalBool(jsval* vp, bool v);
-    MOZ_API FUNCTIONID getObjFunction(OBJID id, const char* fname);
+    MOZ_API MAPID getObjFunction(MAPID id, const char* fname);
 
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected);
     MOZ_API bool initErrorHandler();
     MOZ_API void ShutdownJSEngine();
     JSObject* _createJSClassObject(char* name);
-    MOZ_API OBJID createJSClassObject(char* name);
-    MOZ_API bool attachFinalizerObject(OBJID id);
-    MOZ_API OBJID newJSClassObject(const jschar* name);
-    MOZ_API bool RemoveJSClassObject(OBJID odjID);
+    MOZ_API MAPID createJSClassObject(char* name);
+    MOZ_API bool attachFinalizerObject(MAPID id);
+    MOZ_API int newJSClassObject(const jschar* name);
 }
 
 extern CSEntry csEntry;
-/*
 
-1) object with finalize will be removed from objMap when collected
-2) but not all objects are with finalize
-3) what's the value of stHeapObj after object being collected?
-
-*/
-
-struct stHeapObj
-{
-    JS::Heap<JSObject*> obj;
-    stHeapObj(){}
-    stHeapObj(JS::HandleObject o){ obj = o; }
-};
+// struct stHeapObj
+// {
+//     JS::Heap<JSObject*> obj;
+//     stHeapObj(){}
+//     stHeapObj(JS::HandleObject o){ obj = o; }
+// };
 
 //typedef JS::Heap<JSObject*> stHeapObj;
 
-class objMap
-{
-    typedef map<OBJID, stHeapObj > OBJMAP;
-    typedef OBJMAP::iterator OBJMAPIT;
-
-    static OBJMAP mMap;
-    static OBJID lastID;
-
-public:
-    static void trace(JSTracer *trc);
-    static OBJID add(JS::HandleObject jsObj);
-    static bool remove(OBJID id);
-    static OBJID jsObj2ID(JS::HandleObject jsObj, bool autoAdd = false);
-    static JSObject* id2JSObj(OBJID id);
-};
+// class objMap
+// {
+//     typedef map<OBJID, stHeapObj > OBJMAP;
+//     typedef OBJMAP::iterator OBJMAPIT;
+// 
+//     static OBJMAP mMap;
+//     static OBJID lastID;
+// 
+// public:
+//     static void trace(JSTracer *trc);
+//     static OBJID add(JS::HandleObject jsObj);
+//     static bool remove(OBJID id);
+//     static OBJID jsObj2ID(JS::HandleObject jsObj, bool autoAdd = false);
+//     static JSObject* id2JSObj(OBJID id);
+// };
 
 class valueArr
 {
 public:
-    static JS::Heap<JS::Value>* arr;
+    static int* arr;
 private:
     static int Capacity;
     static int lastIndex;
-    static JS::Heap<JS::Value>* makeSureArrHeapObj(int index);
+    static int* makeSureArrHeapObj(int index);
 
 public:
-    static void trace(JSTracer *trc);
-    static void add(int i, JS::HandleValue val);
-    static void clear();
+    static void add(int arrIndex, MAPID iMap);
+    static void clear(bool bClear);
 };
 
-
-/*
-
-1) getFunction adds a function value to map, but never remove it
-2) function value may exist here, and in valueRoot at the same time
-
-*/
 
 // struct stHeapValue
 // {
@@ -241,37 +230,84 @@ public:
 //     stHeapValue(JS::HandleValue v){ val = v; }
 // };
 
+struct stHeapValue
+{
+    JS::Heap<JS::Value> heapValue;
+    bool bTempTrace;
+
+    // bTrace and hasFinalizeOp
+    // only one of them could be true
+    // or both false
+    bool bTrace;
+    bool hasFinalizeOp;
+    stHeapValue() : bTrace(false), bTempTrace(false), hasFinalizeOp(false) {}
+    stHeapValue(JS::HandleValue val) : bTrace(false), bTempTrace(false), hasFinalizeOp(false), heapValue(val) {}
+};
+
+// get object, ignore failure
+#define MGETOBJ0(id, obj) \
+    JS::RootedObject obj(g_cx, 0);\
+    JS::RootedValue ___objVal(g_cx);\
+    if (valueMap::getVal(id, &___objVal) && ___objVal.isObject())\
+    {\
+        obj = &___objVal.toObject();\
+    }
+
+// get object, if fail, return false
+#define MGETOBJ1(id, obj, er) \
+    JS::RootedValue ___valObj(g_cx);\
+    if (!valueMap::getVal(id, &___valObj) ||\
+        !___valObj.isObject())\
+    {\
+        Assert(false, "MGETOBJ1 fail");\
+        return er;\
+    }\
+    JS::RootedObject obj(g_cx, &___valObj.toObject());
+
+/*
+
+
+
+*/
+
 class valueMap
 {
-    typedef map<int, JS::Heap<JS::Value>* > VALUEMAP;
+    typedef map<int, stHeapValue* > VALUEMAP;
     typedef VALUEMAP::iterator VALUEMAPIT;
     static VALUEMAP mMap;
     static int index;
+
 public:
+    static MAPID add(JS::HandleValue val);
     static void trace(JSTracer *trc);
-    static int add(JS::HandleValue val);
-    static int addFunction(JS::HandleValue val);
-    static bool get(int i, JS::Value* pVal);
-    static bool remove( int i );
-    static bool moveFromMap2Arr(int iMap, int iArr);
+    static MAPID addFunction(JS::HandleValue val);
+    static bool getVal(MAPID i, JS::MutableHandleValue pVal);
+    static MAPID getID(const JS::Value& val, bool autoAdd);
+    static bool removeByID( MAPID i, bool bForce );
+    static MAPID containsValue(JS::Value v);
+    static bool setTrace(MAPID id, bool trace);
+    static bool setTempTrace(MAPID id, bool tempTrace);
+    static bool setHasFinalizeOp(MAPID id, bool has);
+    static bool clear();
 };
 
-class objRoot
-{
-    static std::map<OBJID, JSObject**> mapObjectRoot;
-public:
-    static bool add( OBJID id );
-    static bool remove( OBJID id );
-};
+// class objRoot
+// {
+//     static std::map<OBJID, JSObject**> mapObjectRoot;
+// public:
+//     static bool add( OBJID id );
+//     static bool remove( OBJID id );
+//     static bool containsValue(JSObject* obj);
+// };
 
-class valueRoot
-{
-    static std::map<int, JS::Value*> mMap;
-    static int index;
-public:
-    static int add(JS::HandleValue val);
-    static bool remove(int i);
-};
+// class valueRoot
+// {
+//     static std::map<int, JS::Value*> mMap;
+//     static int index;
+// public:
+//     static int add(JS::HandleValue val);
+//     static bool remove(int i);
+// };
 
 template<class T>
 class variableLengthArray

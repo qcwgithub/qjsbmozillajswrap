@@ -14,8 +14,8 @@ int actualArgc = 0;
 
 #define ArgVal(i) (JS_ARGV(g_cx, g_vp)[(i)])
 
-JS::Heap<JS::Value> valFunRet;
-JS::Heap<JS::Value> valTemp;
+MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
+MAPID idSave = 0; //往valueMap添加后得到的ID
 
 CSEntry csEntry = 0; 
 bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
@@ -83,17 +83,24 @@ JS::Value getVal(eGetType e, bool bIncIndex)
 			return v;
 		}
 		break;
-	case GetJSFunRet:
-		{
-			return valFunRet;
+    case GetJSFunRet:
+        {
+            JS::RootedValue val(g_cx);
+            valueMap::getVal(idFunRet, &val);
+            return val;
 		}
 		break;
-	case GetJsval:
-	default:
-		{
-			return valTemp;
-		}
-		break;
+    case GetSaveAndRemove:
+    default:
+        {
+            JS::RootedValue val(g_cx);
+            valueMap::getVal(idSave, &val);
+
+            valueMap::removeByID(idSave, false);
+
+            return val;
+        }
+        break;
 	}
 }
 
@@ -200,13 +207,12 @@ bool getVector3(eGetType e)
 	val2Vector3(val);
 	return true;
 }
-OBJID getObject(eGetType e)
+int getObject(eGetType e)
 {
-	JS::RootedValue val(g_cx, getVal(e, true));
+	JS::RootedValue val(g_cx, ::getVal(e, true));
 	if (val.isObject())
 	{
-		JS::RootedObject obj(g_cx, &val.toObject());
-		return objMap::jsObj2ID(obj, true);
+        return valueMap::getID(val, true);
 	}
 	return 0;
 }
@@ -254,15 +260,19 @@ MOZ_API bool isVector3( eGetType e )
 MOZ_API int getFunction(eGetType e)
 {
 	JS::RootedValue val(g_cx, getVal(e, true));
+    // TODO won't dup
 	return valueMap::addFunction(val);
 }
 
-void setVal(eSetType e, JS::Value val)
+void setVal(eSetType e, JS::HandleValue val)
 {
 	switch (e)
 	{
-	case SetJsval:
-		valTemp = val;
+	case SetSaveAndTempTrace:
+        {
+            idSave = valueMap::add(val);
+            valueMap::setTempTrace(idSave, true);
+        }
 		break;
 	case SetRval:
 		JS_SET_RVAL(g_cx, g_vp, val);
@@ -284,17 +294,19 @@ void setVal(eSetType e, JS::Value val)
 template<class T>
 void setNumberI(eSetType e, T value)
 {
-	setVal(e, INT_TO_JSVAL((int)value));
+    JS::RootedValue val(g_cx, INT_TO_JSVAL((double)value));
+	setVal(e, val);
 }
 
 template<class T>
 void setNumberF(eSetType e, T value)
 {
-	setVal(e, DOUBLE_TO_JSVAL((double)value));
+    JS::RootedValue val(g_cx, DOUBLE_TO_JSVAL((double)value));
+	setVal(e, val);
 }
 void setUndefined(eSetType e)
 {
-	JS::Value val;
+	JS::RootedValue val(g_cx);
 	val.setUndefined();
 	setVal(e, val);
 }
@@ -313,13 +325,15 @@ void setDouble  (eSetType e, double v)          { return setNumberF<double>(e, v
 void setIntPtr  (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
 void setBoolean(eSetType e, bool v)
 {
-	setVal(e, BOOLEAN_TO_JSVAL(v));
+    JS::RootedValue val(g_cx, BOOLEAN_TO_JSVAL(v));
+	setVal(e, val);
 }
 void setString(eSetType e, const jschar* value)
 {
 	// TODO fix memory leak
 	JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
-	setVal(e, STRING_TO_JSVAL(jsString));
+    JS::RootedValue val(g_cx, STRING_TO_JSVAL(jsString));
+	setVal(e, val);
 }
 void setVector2(eSetType e, float x, float y)
 {
@@ -350,36 +364,42 @@ void setVector3(eSetType e, float x, float y, float z)
         setVal(e, val);
     }
 }
-void setObject(eSetType e, OBJID id)
+void setObject(eSetType e, int id)
 {
-    // TODO
-    // Check: when id == 0
-	JS::RootedObject jsObj(g_cx, objMap::id2JSObj(id));
-	JS::Value val;
-	val.setObjectOrNull(jsObj);
+    JS::RootedValue val(g_cx);
+    if (id == 0 || !valueMap::getVal(id, &val))
+    {
+        val.setUndefined();
+    }
+
 	setVal(e, val);
 }
 void setFunction(eSetType e, int funID)
 {
-    JS::Value _v;
-    if (!valueMap::get(funID, &_v))
-		return;
-
-	setVal(e, _v);
+    setObject(e, funID);
+//     JS::RootedValue val(g_cx);
+//     if (!valueMap::getVal(funID, &val))
+//     {
+//         val.setUndefined();
+//     }
+// 
+// 	setVal(e, _v);
 }
-void setArray(eSetType e, int count)
+void setArray(eSetType e, int count, bool bClear)
 {
     JSObject* _t = JS_NewArrayObject(g_cx, count, 0 /* jsval* */);
     JS::RootedObject arrObj(g_cx, _t);
     for (int i = 0; i < count; i++)
     {
-        JS::RootedValue val(g_cx, valueArr::arr[i]);
+        JS::RootedValue val(g_cx);
+        bool b = valueMap::getVal(valueArr::arr[i], &val);
+        Assert(b);
         JS_SetElement(g_cx, arrObj, i, &val);
     }
     // clear value array
-    valueArr::clear();
+    valueArr::clear(bClear);
 
-	JS::Value val;
-	val.setObjectOrNull(arrObj);
+    JS::RootedValue val(g_cx);
+	val.setObject(*arrObj);
 	setVal(e, val);
 }
