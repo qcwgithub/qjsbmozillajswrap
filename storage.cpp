@@ -183,31 +183,44 @@ void valueArr::clear(bool bClear)
 // £¨²»Ò»¶¨£©
 valueMap::VALUEMAP valueMap::mMap;
 int valueMap::index = 1;
+bool valueMap::tracing = false;
 
 
 void valueMap::trace(JSTracer *trc)
 {
+    Assert(!valueMap::tracing);
+    valueMap::tracing = true;
+
     char sz[16] = {'v','m',0};
     VALUEMAPIT it = mMap.begin();
     for (; it != mMap.end(); it++)
     {
         itoa(it->first, &sz[2], 10);
         stHeapValue* p = it->second;
+        
         if (p->bTrace || p->bTempTrace)
         {
+            jsval old = p->heapValue.get();
             JS_CallHeapValueTracer(trc, &p->heapValue, sz);
+            jsval newv = p->heapValue.get();
+            if (old != newv)
+            {
+                old = newv;
+            }
         }
     }
+
+    valueMap::tracing = false;
 }
 
 MAPID valueMap::add(JS::HandleValue val)
 {
-    int ret;
-    ret = containsValue(val);
-    if (ret != 0)
-    {
-        return ret;
-    }
+//     int ret;
+//     ret = containsValue(val);
+//     if (ret != 0)
+//     {
+//         return ret;
+//     }
 
     stHeapValue* p = new stHeapValue(val);
 
@@ -295,6 +308,7 @@ bool valueMap::removeByID( MAPID i, bool bForce )
         Assert(!(p->bTrace && p->hasFinalizeOp), "trace and finalize are both true!!!");
         if (bForce || (!p->bTrace && !p->hasFinalizeOp))
         {
+            Assert(!valueMap::tracing);
             delete it->second;
             mMap.erase(it);
         }

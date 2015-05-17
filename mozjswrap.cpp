@@ -194,6 +194,9 @@ bool attachFinalizerObject(MAPID id)
     JS::RootedValue val(g_cx);
     val.setObject(*fObj);
     JS_DefineProperty(g_cx, obj, "__just_for_finalize", val, 0/* getter */, 0/* setter */, 0/* attr */);
+
+    valueMap::setHasFinalizeOp(id, true);
+
     return true;
 }
 
@@ -464,6 +467,7 @@ JSObject** ppCSObj = 0;
 MAPID idErrorEntry = 0;
 bool initErrorHandler()
 {
+    return false;
     JS::RootedObject CS_obj(g_cx, *ppCSObj);
     JS::RootedValue val(g_cx);
     JS_GetProperty(g_cx, CS_obj, "jsFunctionEntry", &val);
@@ -543,6 +547,7 @@ MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
             ret = JS_CallFunctionValue(g_cx, jsObj, fval, argCount, arr, &retVal);
         }
     }
+    valueMap::removeByID(idFunRet, false);
     JS::RootedValue rv(g_cx, retVal);
     idFunRet = valueMap::add(rv);
     return ret;
@@ -618,7 +623,7 @@ MOZ_API MAPID getObjFunction(MAPID id, const char* fname)
     if (val.isObject() && 
         JS_ObjectIsFunction(g_cx, &val.toObject()))
     {
-        return valueMap::add(val);
+        return valueMap::addFunction(val);
     }
     // Assert(false, "getObjFunction fail");
     // no error, function is not found

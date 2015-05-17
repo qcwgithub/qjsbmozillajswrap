@@ -276,6 +276,7 @@ class valueMap
     typedef VALUEMAP::iterator VALUEMAPIT;
     static VALUEMAP mMap;
     static int index;
+    static bool tracing;
 
 public:
     static MAPID add(JS::HandleValue val);
