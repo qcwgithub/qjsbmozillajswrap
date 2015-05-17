@@ -196,7 +196,8 @@ void valueMap::trace(JSTracer *trc)
     for (; it != mMap.end(); it++)
     {
         itoa(it->first, &sz[2], 10);
-        stHeapValue* p = it->second;
+		//stHeapValue* p = it->second;
+        stHeapValue* p = &it->second;
         
         if (p->bTrace || p->bTempTrace)
         {
@@ -215,18 +216,20 @@ void valueMap::trace(JSTracer *trc)
 
 MAPID valueMap::add(JS::HandleValue val)
 {
-//     int ret;
-//     ret = containsValue(val);
-//     if (ret != 0)
-//     {
-//         return ret;
-//     }
+    int ret;
+    ret = containsValue(val);
+    if (ret != 0)
+    {
+        return ret;
+    }
 
-    stHeapValue* p = new stHeapValue(val);
+    //stHeapValue* p = new stHeapValue(val);
+	stHeapValue p(val);
 
     if (valueMap::index == 0)
         valueMap::index = 1;
 
+	Assert(!valueMap::tracing);
     mMap[valueMap::index] = p;
     return valueMap::index++;
 }
@@ -245,7 +248,7 @@ MAPID valueMap::containsValue(JS::Value v)
     VALUEMAPIT it = mMap.begin();
     for (; it != mMap.end(); it++)
     {
-        if (v == it->second->heapValue.get())
+        if (v == it->second.heapValue.get())
             return it->first;
     }
     return 0;
@@ -256,7 +259,7 @@ bool valueMap::setTrace(MAPID id, bool trace)
     VALUEMAPIT it = mMap.find(id);
     if (it != mMap.end())        
     {
-        it->second->bTrace = trace;
+        it->second.bTrace = trace;
         return true;
     }
     Assert(false, "valueMap::setTrace fail");
@@ -268,7 +271,7 @@ bool valueMap::setTempTrace(MAPID id, bool tempTrace)
     VALUEMAPIT it = mMap.find(id);
     if (it != mMap.end())
     {
-        it->second->bTempTrace = tempTrace;
+        it->second.bTempTrace = tempTrace;
         return true;
     }
     Assert(false, "valueMap::setTempTrace fail");
@@ -280,7 +283,7 @@ bool valueMap::setHasFinalizeOp(MAPID id, bool has)
     VALUEMAPIT it = mMap.find(id);
     if (it != mMap.end())
     {
-        it->second->hasFinalizeOp = has;
+        it->second.hasFinalizeOp = has;
         return true;
     }
     Assert(false, "valueMap::setHasFinalizeOp fail");
@@ -289,11 +292,11 @@ bool valueMap::setHasFinalizeOp(MAPID id, bool has)
 
 bool valueMap::clear()
 {
-    VALUEMAPIT it = mMap.begin();
-    for (; it != mMap.end(); it++)
-    {
-        delete it->second;
-    }
+//     VALUEMAPIT it = mMap.begin();
+//     for (; it != mMap.end(); it++)
+//     {
+//         delete it->second;
+//     }
     mMap.clear();
     return 0;
 }
@@ -303,13 +306,13 @@ bool valueMap::removeByID( MAPID i, bool bForce )
     VALUEMAPIT it = mMap.find(i);
     if (it != mMap.end())
     {
-        stHeapValue* p = it->second;
+        stHeapValue* p = &it->second;
         p->bTempTrace = false;
         Assert(!(p->bTrace && p->hasFinalizeOp), "trace and finalize are both true!!!");
         if (bForce || (!p->bTrace && !p->hasFinalizeOp))
         {
             Assert(!valueMap::tracing);
-            delete it->second;
+            //delete it->second;
             mMap.erase(it);
         }
         return true;
@@ -324,7 +327,7 @@ bool valueMap::getVal(MAPID id, JS::MutableHandleValue pVal)
     VALUEMAPIT it = mMap.find(id);
     if (it != mMap.end())
     {
-        pVal.set(it->second->heapValue.get());
+        pVal.set(it->second.heapValue.get());
         return true;
     }
     return false;
@@ -335,7 +338,7 @@ MAPID valueMap::getID(const JS::Value& val, bool autoAdd)
     VALUEMAPIT it = mMap.begin();
     for (; it != mMap.end(); it++)
     {
-        if (it->second->heapValue.get() == val)
+        if (it->second.heapValue.get() == val)
             return it->first;
     }
     if (autoAdd)

@@ -247,8 +247,8 @@ JSObject* _createJSClassObject(char* name)
     {
         JS::RootedObject tableObj(g_cx, _t);
         JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
-        JS::RootedObject jsObj(g_cx, JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, 0/* parentProto */));
-
+        
+		JSObject* jsObj = JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, 0/* parentProto */);
         return jsObj;
     }
     return 0;
@@ -259,8 +259,9 @@ MOZ_API MAPID createJSClassObject(char* name)
     JS::RootedObject jsObj(g_cx, _createJSClassObject(name));
     if (jsObj)
     {
-        JS::RootedValue val(g_cx);
-        val.setObject(*jsObj);
+		JS::Value _v; 
+		_v.setObject(*jsObj);
+        JS::RootedValue val(g_cx, _v);
         int id = valueMap::add(val);
         attachFinalizerObject(id);
         return id;
@@ -376,6 +377,12 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
 MOZ_API void ShutdownJSEngine()
 {
     shutingDown = true;
+	if (ppCSObj)
+	{
+		JS_RemoveObjectRoot(g_cx, ppCSObj);
+		delete ppCSObj;
+		ppCSObj = 0;
+	}
 
     JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
     idFunRet = 0;
@@ -467,7 +474,6 @@ JSObject** ppCSObj = 0;
 MAPID idErrorEntry = 0;
 bool initErrorHandler()
 {
-    return false;
     JS::RootedObject CS_obj(g_cx, *ppCSObj);
     JS::RootedValue val(g_cx);
     JS_GetProperty(g_cx, CS_obj, "jsFunctionEntry", &val);
@@ -638,4 +644,8 @@ MOZ_API void setRvalBool( jsval* vp, bool v )
 MOZ_API void reportError( const char* err )
 {
     JS_ReportError(g_cx, "%s", err);
+}
+MOZ_API int getValueMapSize()
+{
+	return valueMap::getMapSize();
 }

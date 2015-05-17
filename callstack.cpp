@@ -38,7 +38,7 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     }
 
     argIndex = 4;
-    bool ret = csEntry(op, slot, index, isStatic, actualArgc - argIndex);
+    bool ret = csEntry(op, slot, index, (isStatic ? 1 : 0), actualArgc - argIndex);
     return ret;
 }
 

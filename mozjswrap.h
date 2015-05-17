@@ -85,7 +85,7 @@ extern "C"
         SetSaveAndTempTrace = 2,
     };
 
-    typedef bool (* CSEntry)(int op, int slot, int index, bool bStatic, int argc);
+    typedef bool (* CSEntry)(int op, int slot, int index, int bStatic, int argc);
 	typedef void (* OnObjCollected)(MAPID id);
     bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
@@ -179,6 +179,8 @@ extern "C"
     MOZ_API MAPID createJSClassObject(char* name);
     MOZ_API bool attachFinalizerObject(MAPID id);
     MOZ_API int newJSClassObject(const jschar* name);
+
+	MOZ_API int getValueMapSize();
 }
 
 extern CSEntry csEntry;
@@ -272,7 +274,7 @@ struct stHeapValue
 
 class valueMap
 {
-    typedef map<int, stHeapValue* > VALUEMAP;
+    typedef map<int, stHeapValue > VALUEMAP;
     typedef VALUEMAP::iterator VALUEMAPIT;
     static VALUEMAP mMap;
     static int index;
@@ -290,6 +292,8 @@ public:
     static bool setTempTrace(MAPID id, bool tempTrace);
     static bool setHasFinalizeOp(MAPID id, bool has);
     static bool clear();
+
+	static int getMapSize(){ return (int)mMap.size(); }
 };
 
 // class objRoot
