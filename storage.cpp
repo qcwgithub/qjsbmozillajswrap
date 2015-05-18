@@ -195,18 +195,21 @@ void valueMap::trace(JSTracer *trc)
 	map<__int64, MAPID >::iterator vit;
 	__int64 Old, New;
 
-    char sz[16] = {'v','m',0};
+    //char sz[16] = {'v','m',0};
     VALUEMAPIT it = mMap.begin();
     for (; it != mMap.end(); it++)
     {
-        itoa(it->first, &sz[2], 10);
+        //itoa(it->first, &sz[2], 10);
 		//stHeapValue* p = it->second;
         stHeapValue* p = &it->second;
         
         if (p->bTrace || p->bTempTrace)
         {
 			Old = p->heapValue.get().data.asBits;
-            JS_CallHeapValueTracer(trc, &p->heapValue, sz);
+			//
+			// Set name to 0 is OK? it seems OK. I'm not sure.
+			// 
+            JS_CallHeapValueTracer(trc, &p->heapValue, 0 /* name */);
 			New = p->heapValue.get().data.asBits;
 			if (New != Old)
 			{
