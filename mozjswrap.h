@@ -12,6 +12,7 @@
 #include "js/tracer.h"
 #include <vector>
 #include <map>
+#include <list>
 using namespace std;
 
 #ifdef _WINDOWS
@@ -178,7 +179,7 @@ extern "C"
     JSObject* _createJSClassObject(char* name);
     MOZ_API MAPID createJSClassObject(char* name);
     MOZ_API bool attachFinalizerObject(MAPID id);
-    MOZ_API int newJSClassObject(const jschar* name);
+	MOZ_API int newJSClassObject(const jschar* name);
 
 	MOZ_API int getValueMapSize();
 }
@@ -242,8 +243,9 @@ struct stHeapValue
     // or both false
     bool bTrace;
     bool hasFinalizeOp;
-    stHeapValue() : bTrace(false), bTempTrace(false), hasFinalizeOp(false) {}
-    stHeapValue(JS::HandleValue val) : bTrace(false), bTempTrace(false), hasFinalizeOp(false), heapValue(val) {}
+	char mark;
+    stHeapValue() : bTrace(false), bTempTrace(false), hasFinalizeOp(false), mark(0) {}
+    stHeapValue(JS::HandleValue val) : bTrace(false), bTempTrace(false), hasFinalizeOp(false), heapValue(val), mark(0) {}
 };
 
 // get object, ignore failure
@@ -279,9 +281,12 @@ class valueMap
     static VALUEMAP mMap;
     static int index;
     static bool tracing;
+	static map<__int64, MAPID > VMap;
+
+	static std::list<int> LstTempID;
 
 public:
-    static MAPID add(JS::HandleValue val);
+    static MAPID add(JS::HandleValue val, int mark);
     static void trace(JSTracer *trc);
     static MAPID addFunction(JS::HandleValue val);
     static bool getVal(MAPID i, JS::MutableHandleValue pVal);
@@ -294,6 +299,9 @@ public:
     static bool clear();
 
 	static int getMapSize(){ return (int)mMap.size(); }
+
+	static void _addTempID(MAPID id) { LstTempID.push_back(id); }
+	static void _clearTempIDs();
 };
 
 // class objRoot

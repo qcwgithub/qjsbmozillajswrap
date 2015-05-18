@@ -39,6 +39,9 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
 
     argIndex = 4;
     bool ret = csEntry(op, slot, index, (isStatic ? 1 : 0), actualArgc - argIndex);
+
+	valueMap::_clearTempIDs();
+
     return ret;
 }
 
@@ -212,7 +215,9 @@ int getObject(eGetType e)
 	JS::RootedValue val(g_cx, ::getVal(e, true));
 	if (val.isObject())
 	{
-        return valueMap::getID(val, true);
+        MAPID id = valueMap::getID(val, true);
+		valueMap::_addTempID(id);
+		return id;
 	}
 	return 0;
 }
@@ -260,7 +265,6 @@ MOZ_API bool isVector3( eGetType e )
 MOZ_API int getFunction(eGetType e)
 {
 	JS::RootedValue val(g_cx, getVal(e, true));
-    // TODO won't dup
 	return valueMap::addFunction(val);
 }
 
@@ -270,7 +274,7 @@ void setVal(eSetType e, JS::HandleValue val)
 	{
 	case SetSaveAndTempTrace:
         {
-            idSave = valueMap::add(val);
+            idSave = valueMap::add(val, 7);
             valueMap::setTempTrace(idSave, true);
         }
 		break;

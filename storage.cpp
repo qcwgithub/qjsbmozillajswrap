@@ -179,17 +179,21 @@ void valueArr::clear(bool bClear)
 // 
 // }
 
-// TODO 所有存在这里的都要立即删除
-// （不一定）
 valueMap::VALUEMAP valueMap::mMap;
+map<__int64, MAPID > valueMap::VMap;
 int valueMap::index = 1;
 bool valueMap::tracing = false;
-
+std::list<int> valueMap::LstTempID;
 
 void valueMap::trace(JSTracer *trc)
 {
     Assert(!valueMap::tracing);
     valueMap::tracing = true;
+
+	//VMap.clear();
+
+	map<__int64, MAPID >::iterator vit;
+	__int64 Old, New;
 
     char sz[16] = {'v','m',0};
     VALUEMAPIT it = mMap.begin();
@@ -201,23 +205,34 @@ void valueMap::trace(JSTracer *trc)
         
         if (p->bTrace || p->bTempTrace)
         {
-            jsval old = p->heapValue.get();
+			Old = p->heapValue.get().data.asBits;
             JS_CallHeapValueTracer(trc, &p->heapValue, sz);
-            jsval newv = p->heapValue.get();
-            if (old != newv)
-            {
-                old = newv;
-            }
+			New = p->heapValue.get().data.asBits;
+			if (New != Old)
+			{
+				//
+				// Will it get here?
+				// Not sure
+				//
+				vit = VMap.find(Old);
+				Assert(vit != VMap.end());
+				VMap.erase(vit);
+				VMap.insert(map<__int64, MAPID >::value_type(New, it->first));
+			}
         }
     }
+
+// 	for (it = mMap.begin(); it != mMap.end(); it++)
+// 	{
+// 		VMap.insert(map<__int64, MAPID >::value_type(it->second.heapValue.get().data.asBits, it->first));
+// 	}
 
     valueMap::tracing = false;
 }
 
-MAPID valueMap::add(JS::HandleValue val)
+MAPID valueMap::add(JS::HandleValue val, int mark)
 {
-    int ret;
-    ret = containsValue(val);
+    int ret = containsValue(val);
     if (ret != 0)
     {
         return ret;
@@ -225,13 +240,21 @@ MAPID valueMap::add(JS::HandleValue val)
 
     //stHeapValue* p = new stHeapValue(val);
 	stHeapValue p(val);
+	p.mark = mark;
 
-    if (valueMap::index == 0)
-        valueMap::index = 1;
+	int& J = valueMap::index;
+    if (J == 0) J = 1;
 
 	Assert(!valueMap::tracing);
-    mMap[valueMap::index] = p;
-    return valueMap::index++;
+
+	// 1)
+	mMap.insert(VALUEMAP::value_type(J, p));
+	//mMap[valueMap::index] = p;
+
+	// 2)
+	VMap.insert(map<__int64, MAPID >::value_type(p.heapValue.get().data.asBits, J));
+    
+    return J++;
 }
 
 MAPID valueMap::addFunction(JS::HandleValue val)
@@ -240,17 +263,28 @@ MAPID valueMap::addFunction(JS::HandleValue val)
     if (!JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &ns))
         return 0;
 
-    return add(ns);
+    return add(ns, 8);
 }
 
 MAPID valueMap::containsValue(JS::Value v)
 {
-    VALUEMAPIT it = mMap.begin();
-    for (; it != mMap.end(); it++)
-    {
-        if (v == it->second.heapValue.get())
-            return it->first;
-    }
+//     VALUEMAPIT it = mMap.begin();
+//     for (; it != mMap.end(); it++)
+//     {
+//         if (v == it->second.heapValue.get())
+//             return it->first;
+//     
+// 	}
+
+	map<__int64, MAPID >::iterator vit = VMap.find(v.data.asBits);
+	if (vit != VMap.end())
+	{
+		VALUEMAPIT it = mMap.find(vit->second);
+		Assert(it != mMap.end());
+		return it->first;
+	}
+
+
     return 0;
 }
 
@@ -259,7 +293,8 @@ bool valueMap::setTrace(MAPID id, bool trace)
     VALUEMAPIT it = mMap.find(id);
     if (it != mMap.end())        
     {
-        it->second.bTrace = trace;
+		stHeapValue& hv = it->second;
+        hv.bTrace = trace;
         return true;
     }
     Assert(false, "valueMap::setTrace fail");
@@ -298,6 +333,7 @@ bool valueMap::clear()
 //         delete it->second;
 //     }
     mMap.clear();
+	VMap.clear();
     return 0;
 }
 
@@ -312,8 +348,15 @@ bool valueMap::removeByID( MAPID i, bool bForce )
         if (bForce || (!p->bTrace && !p->hasFinalizeOp))
         {
             Assert(!valueMap::tracing);
-            //delete it->second;
+
+			// 1)
+			map<__int64, MAPID >::iterator vit = VMap.find(it->second.heapValue.get().data.asBits);
+			Assert(vit != VMap.end());
+			VMap.erase(vit);
+
+            // 2)
             mMap.erase(it);
+
         }
         return true;
     }
@@ -335,19 +378,47 @@ bool valueMap::getVal(MAPID id, JS::MutableHandleValue pVal)
 
 MAPID valueMap::getID(const JS::Value& val, bool autoAdd)
 {
-    VALUEMAPIT it = mMap.begin();
-    for (; it != mMap.end(); it++)
-    {
-        if (it->second.heapValue.get() == val)
-            return it->first;
-    }
+//     VALUEMAPIT it = mMap.begin();
+//     for (; it != mMap.end(); it++)
+//     {
+//         if (it->second.heapValue.get() == val)
+//             return it->first;
+//     }
+
     if (autoAdd)
     {
         JS::RootedValue rval(g_cx, val);
-        return valueMap::add(rval);
+        return valueMap::add(rval, 10);
     }
+	else
+	{
+		return containsValue(val);
+	}
     return 0;
 }
+
+
+void valueMap::_clearTempIDs()
+{
+	std::list<int>::iterator it = LstTempID.begin();
+	for (; it != LstTempID.end(); it++)
+	{
+		removeByID(*it, false);
+	}
+	LstTempID.clear();
+
+// 	bool bStat = false;
+// 	if (bStat)
+// 	{
+// 		std::map<int, int> m;
+// 		for(VALUEMAPIT it = mMap.begin(); it != mMap.end(); it++)
+// 		{
+// 			m[it->second.mark] ++;
+// 		}
+// 		bStat = false;
+// 	}
+}
+
 
 //     VALUEMAPIT it = mMap.find(iMap);
 //     if (it != mMap.end())

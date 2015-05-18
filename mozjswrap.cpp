@@ -229,7 +229,6 @@ C. 当 JSSerizlizer 需要生成一个对象时：newJSClassObject
 // 创建一个JS类对象
 // 返回jsObj
 //
-// TODO finalizer ?
 //
 // 假设 name = GameObject
 // 操作：
@@ -262,7 +261,7 @@ MOZ_API MAPID createJSClassObject(char* name)
 		JS::Value _v; 
 		_v.setObject(*jsObj);
         JS::RootedValue val(g_cx, _v);
-        int id = valueMap::add(val);
+        int id = valueMap::add(val, 1);
         attachFinalizerObject(id);
         return id;
     }
@@ -282,7 +281,7 @@ MOZ_API int newJSClassObject(const jschar* name)
         JS::RootedValue rval(g_cx, _rval);
         if (rval.isObject())
         {
-            return valueMap::add(rval);
+            return valueMap::add(rval, 2);
             // not need to add finalizeOp here
             // if it's pure js object, .. OK
             // if it's C# object, attachFinalizerObject will be called from C#
@@ -393,11 +392,6 @@ MOZ_API void ShutdownJSEngine()
 
 	JS_LeaveCompartment(g_cx, oldCompartment);
 
-	// TODO
-// 	JSMgr.ClearJSCSRelation();
-// 	JSMgr.ClearRootedObject();
-// 	JSMgr.ClearCompiledScript();
-
 	JS_DestroyContext(g_cx);
 	JS_DestroyRuntime(g_rt);
 	JS_ShutDown();
@@ -431,7 +425,7 @@ MOZ_API bool getElement(MAPID id, int i)
         return false;
     }
 
-    idSave = valueMap::add(val);
+    idSave = valueMap::add(val, 3);
     return true;
 }
 
@@ -484,7 +478,7 @@ bool initErrorHandler()
     {
         JS::RootedValue fval(g_cx);
         JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &fval);
-        idErrorEntry = valueMap::add(fval);
+        idErrorEntry = valueMap::add(fval, 5);
         return true;
     }
     return false;
@@ -542,7 +536,6 @@ MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
         }
         else
         {
-            // TODO 
             JS::Value* arr = arrFunArg.get(argCount);
             JS::RootedValue ele(g_cx);
             for (int i = 0; i < argCount; i++)
@@ -556,7 +549,7 @@ MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
     }
     valueMap::removeByID(idFunRet, false);
     JS::RootedValue rv(g_cx, retVal);
-    idFunRet = valueMap::add(rv);
+    idFunRet = valueMap::add(rv, 6);
     return ret;
 }
 
