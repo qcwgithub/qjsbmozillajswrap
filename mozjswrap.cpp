@@ -383,6 +383,7 @@ MOZ_API void ShutdownJSEngine()
 		delete ppCSObj;
 		ppCSObj = 0;
 	}
+	idErrorEntry = 0;
 
     JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
     idFunRet = 0;
