@@ -281,7 +281,9 @@ class valueMap
     static VALUEMAP mMap;
     static int index;
     static bool tracing;
-	static map<__int64, MAPID > VMap;
+
+    typedef map<uint64_t, MAPID > VMAP;
+	static VMAP VMap;
 
 	static std::list<int> LstTempID;
 
