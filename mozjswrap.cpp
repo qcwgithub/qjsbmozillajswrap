@@ -44,7 +44,7 @@ OnObjCollected onObjCollected = 0;
 bool shutingDown = false;
 void sc_finalize(JSFreeOp* freeOp, JSObject* obj)
 {
-    int id = (int)JS_GetPrivate(obj);
+    int id = (int)(long long)JS_GetPrivate(obj);
 
     bool bRemoved = valueMap::removeByID(id, true);
     if (!shutingDown) Assert(bRemoved, "finalize remove fail");
