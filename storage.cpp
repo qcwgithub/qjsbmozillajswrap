@@ -205,12 +205,12 @@ void valueMap::trace(JSTracer *trc)
         
         if (p->bTrace || p->bTempTrace)
         {
-			Old = p->heapValue.get().data.asBits;
+			Old = p->heapValue.get().asRawBits();
 			//
 			// Set name to 0 is OK? it seems OK. I'm not sure.
 			// 
             JS_CallHeapValueTracer(trc, &p->heapValue, 0 /* name */);
-			New = p->heapValue.get().data.asBits;
+			New = p->heapValue.get().asRawBits();
 			if (New != Old)
 			{
 				//
@@ -227,7 +227,7 @@ void valueMap::trace(JSTracer *trc)
 
 // 	for (it = mMap.begin(); it != mMap.end(); it++)
 // 	{
-// 		VMap.insert(VMAP::value_type(it->second.heapValue.get().data.asBits, it->first));
+// 		VMap.insert(VMAP::value_type(it->second.heapValue.get().asRawBits(), it->first));
 // 	}
 
     valueMap::tracing = false;
@@ -255,7 +255,7 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
 	//mMap[valueMap::index] = p;
 
 	// 2)
-	VMap.insert(VMAP::value_type(p.heapValue.get().data.asBits, J));
+	VMap.insert(VMAP::value_type(p.heapValue.get().asRawBits(), J));
     
     return J++;
 }
@@ -279,7 +279,7 @@ MAPID valueMap::containsValue(JS::Value v)
 //     
 // 	}
 
-	VMAP::iterator vit = VMap.find(v.data.asBits);
+	VMAP::iterator vit = VMap.find(v.asRawBits());
 	if (vit != VMap.end())
 	{
 		VALUEMAPIT it = mMap.find(vit->second);
@@ -353,7 +353,7 @@ bool valueMap::removeByID( MAPID i, bool bForce )
             Assert(!valueMap::tracing);
 
 			// 1)
-			VMAP::iterator vit = VMap.find(it->second.heapValue.get().data.asBits);
+			VMAP::iterator vit = VMap.find(it->second.heapValue.get().asRawBits());
 			Assert(vit != VMap.end());
 			VMap.erase(vit);
 

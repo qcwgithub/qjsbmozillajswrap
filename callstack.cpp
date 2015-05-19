@@ -107,9 +107,32 @@ JS::Value getVal(eGetType e, bool bIncIndex)
 	}
 }
 
+enum eValueTag
+{
+    tagUNDEFINED = 1 << 0,
+    tagNULL = 1 << 1,
+    tagINT32 = 1 << 2,
+    tagDOUBLE = 1 << 3,
+    tagBOOLEAN = 1 << 4,
+    tagSTRING = 1 << 5,
+    tagNUMBER = 1 << 6,
+    tagOBJECT = 1 << 7,
+};
 MOZ_API unsigned int getTag(eGetType e)
 {
-	return getVal(e, false).data.s.tag;
+	const JS::Value& val = getVal(e, false);
+    unsigned int ret = 0;
+    {
+        if (val.isUndefined()) ret |= tagUNDEFINED;
+        if (val.isNull()) ret |= tagNULL;
+        if (val.isInt32()) ret |= tagINT32;
+        if (val.isDouble()) ret |= tagDOUBLE;
+        if (val.isBoolean()) ret |= tagBOOLEAN;
+        if (val.isString()) ret |= tagSTRING;
+        if (val.isNumber()) ret |= tagNUMBER;
+        if (val.isObject()) ret |= tagOBJECT;
+    }
+    return ret;
 }
 
 template<class T>
