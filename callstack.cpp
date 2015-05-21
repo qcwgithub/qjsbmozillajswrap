@@ -172,9 +172,9 @@ float           getSingle  (eGetType e) { return getNumber<float>(e); }
 double          getDouble  (eGetType e) { return getNumber<double>(e); }
 long long       getIntPtr  (eGetType e) { return getNumber<long long>(e); }
 
-bool getBoolean(eGetType e) 
+_BOOL getBoolean(eGetType e) 
 {
-	return getVal(e, true).toBoolean();
+	return (getVal(e, true).toBoolean() ? _TRUE : _FALSE);
 }
 const jschar* getString(eGetType e) 
 {
@@ -221,17 +221,15 @@ void val2Vector3(JS::HandleValue pval)
     JS_GetProperty(g_cx, obj, "z", &val);
     *(floatPtr[2]) = val2Number<float>(val);
 }
-bool getVector2(eGetType e)
+void getVector2(eGetType e)
 {
 	JS::RootedValue val(g_cx, getVal(e, true));
 	val2Vector2(val);
-	return true;
 }
-bool getVector3(eGetType e)
+void getVector3(eGetType e)
 {
 	JS::RootedValue val(g_cx, getVal(e, true));
 	val2Vector3(val);
-	return true;
 }
 int getObject(eGetType e)
 {
@@ -245,14 +243,14 @@ int getObject(eGetType e)
 	return 0;
 }
 
-MOZ_API bool isFunction(eGetType e)
+MOZ_API _BOOL isFunction(eGetType e)
 {
 	JS::RootedValue val(g_cx, getVal(e, false));
 	if (val.isObject())
 	{
-		return JS_ObjectIsFunction(g_cx, &val.toObject());
+		return (JS_ObjectIsFunction(g_cx, &val.toObject()) ? _TRUE : _FALSE);
 	}
-	return false;
+	return _FALSE;
 }
 
 bool valFullNameIs(JS::HandleValue val, const char* name)
@@ -275,16 +273,16 @@ bool valFullNameIs(JS::HandleValue val, const char* name)
 	return false;
 }
 
-MOZ_API bool isVector2( eGetType e )
+MOZ_API _BOOL isVector2( eGetType e )
 {
 	JS::RootedValue val(g_cx, getVal(e, false));
-	return valFullNameIs(val, "UnityEngine.Vector2");
+	return (valFullNameIs(val, "UnityEngine.Vector2") ? _TRUE : _FALSE);
 }
 
-MOZ_API bool isVector3( eGetType e )
+MOZ_API _BOOL isVector3( eGetType e )
 {
 	JS::RootedValue val(g_cx, getVal(e, false));
-	return valFullNameIs(val, "UnityEngine.Vector3");
+	return (valFullNameIs(val, "UnityEngine.Vector3") ? _TRUE : _FALSE);
 }
 
 MOZ_API int getFunction(eGetType e)
@@ -352,9 +350,9 @@ void setEnum    (eSetType e, int v)             { return setNumberI<int>(e, v); 
 void setSingle  (eSetType e, float v)           { return setNumberF<float>(e, v); }
 void setDouble  (eSetType e, double v)          { return setNumberF<double>(e, v); }
 void setIntPtr  (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
-void setBoolean(eSetType e, bool v)
+void setBoolean(eSetType e, _BOOL v)
 {
-    JS::RootedValue val(g_cx, BOOLEAN_TO_JSVAL(v));
+    JS::RootedValue val(g_cx, BOOLEAN_TO_JSVAL(v == _TRUE));
 	setVal(e, val);
 }
 void setString(eSetType e, const char* value)
@@ -413,7 +411,7 @@ void setFunction(eSetType e, int funID)
 // 
 // 	setVal(e, _v);
 }
-void setArray(eSetType e, int count, bool bClear)
+void setArray(eSetType e, int count, _BOOL bClear)
 {
     JSObject* _t = JS_NewArrayObject(g_cx, count, 0 /* jsval* */);
     JS::RootedObject arrObj(g_cx, _t);
@@ -425,7 +423,7 @@ void setArray(eSetType e, int count, bool bClear)
         JS_SetElement(g_cx, arrObj, i, &val);
     }
     // clear value array
-    valueArr::clear(bClear);
+    valueArr::clear(bClear == _TRUE);
 
     JS::RootedValue val(g_cx);
 	val.setObject(*arrObj);

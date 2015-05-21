@@ -45,6 +45,12 @@ extern MAPID idSave; //往valueMap添加后得到的ID
 extern JSObject** ppCSObj;
 extern MAPID idErrorEntry;
 
+// marshal
+// it seems they treat bool as int
+#define _BOOL int
+#define _FALSE 0
+#define _TRUE 1
+
 extern "C"
 {
 	/*
@@ -66,8 +72,8 @@ extern "C"
 
     // 第1个参数是个id
     // 因为会调用 setProperty 前面一定是用创建 JS 类的对象
-    MOZ_API bool setProperty(MAPID id, const char* name, MAPID valueID);
-    MOZ_API bool getElement(MAPID id, int i);
+    MOZ_API void setProperty(MAPID id, const char* name, MAPID valueID);
+    MOZ_API void getElement(MAPID id, int i);
     MOZ_API int getArrayLength(MAPID id);
 
     MOZ_API void gc();
@@ -86,7 +92,7 @@ extern "C"
         SetSaveAndTempTrace = 2,
     };
 
-    typedef bool (* CSEntry)(int op, int slot, int index, int bStatic, int argc);
+    typedef _BOOL (* CSEntry)(int op, int slot, int index, int bStatic, int argc);
 	typedef void (* OnObjCollected)(MAPID id);
     bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
@@ -113,17 +119,17 @@ extern "C"
     MOZ_API float           getSingle  (eGetType e);
     MOZ_API double          getDouble  (eGetType e);
     MOZ_API long long       getIntPtr  (eGetType e);
-    MOZ_API bool getBoolean(eGetType e);
+    MOZ_API _BOOL getBoolean(eGetType e);
     MOZ_API const jschar* getString(eGetType e);
 
     MOZ_API void setFloatPtr2(float* f0, float* f1);
     MOZ_API void setFloatPtr3(float* f0, float* f1, float* f2);
     void val2Vector2(JS::HandleValue pval);
-    MOZ_API bool getVector2(eGetType e);
+    MOZ_API void getVector2(eGetType e);
     void val2Vector3(JS::HandleValue pval);
-    MOZ_API bool getVector3(eGetType e);
+    MOZ_API void getVector3(eGetType e);
     MOZ_API int getObject(eGetType e);
-    MOZ_API bool isFunction(eGetType e);
+    MOZ_API _BOOL isFunction(eGetType e);
     MOZ_API int getFunction(eGetType e);
 
     MOZ_API void setUndefined(eSetType e);
@@ -140,26 +146,26 @@ extern "C"
     MOZ_API void setSingle  (eSetType e, float v);
     MOZ_API void setDouble  (eSetType e, double v);
     MOZ_API void setIntPtr  (eSetType e, long long v);
-    MOZ_API void setBoolean(eSetType e, bool v);
+    MOZ_API void setBoolean(eSetType e, _BOOL v);
     MOZ_API void setString(eSetType e, const char* value);
     MOZ_API void setVector2(eSetType e, float x, float y);
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
     MOZ_API void setObject(eSetType e, int id);
-    MOZ_API void setArray(eSetType e, int count, bool bClear);
+    MOZ_API void setArray(eSetType e, int count, _BOOL bClear);
     MOZ_API void setFunction(eSetType e, int funID);
 
-    MOZ_API bool isVector2(eGetType e);
-    MOZ_API bool isVector3(eGetType e);
+    MOZ_API _BOOL isVector2(eGetType e);
+    MOZ_API _BOOL isVector3(eGetType e);
 
     // val movement
     MOZ_API void moveSaveID2Arr( int arrIndex );
     MOZ_API MAPID getSaveID( );
     MOZ_API void removeByID( MAPID id );
-    MOZ_API bool moveID2Arr(int id, int arrIndex);
+    MOZ_API void moveID2Arr(int id, int arrIndex);
 
-    MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount);
-    MOZ_API bool setTrace(MAPID id, bool bTrace);
-    MOZ_API bool setTempTrace(MAPID id, bool bTempTrace);
+    MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount);
+    MOZ_API void setTrace(MAPID id, _BOOL bTrace);
+    MOZ_API void setTempTrace(MAPID id, _BOOL bTempTrace);
 
     // 目前仅用于 arg，不够用的话要再加 (GetType e) 参数
     MOZ_API MAPID addArgObj2Map();
@@ -168,17 +174,17 @@ extern "C"
     //MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
     /////////////////////////////////////////////////////////////////////
 
-    MOZ_API bool evaluate(const char* ascii, size_t length, const char* filename);
+    MOZ_API _BOOL evaluate(const char* ascii, size_t length, const char* filename);
     MOZ_API const jschar* getArgString(jsval* vp, int i);
-    MOZ_API void setRvalBool(jsval* vp, bool v);
+    MOZ_API void setRvalBool(jsval* vp, _BOOL v);
     MOZ_API MAPID getObjFunction(MAPID id, const char* fname);
 
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected);
-    MOZ_API bool initErrorHandler();
+    MOZ_API _BOOL initErrorHandler();
     MOZ_API void ShutdownJSEngine();
     JSObject* _createJSClassObject(char* name);
     MOZ_API MAPID createJSClassObject(char* name);
-    MOZ_API bool attachFinalizerObject(MAPID id);
+    MOZ_API void attachFinalizerObject(MAPID id);
 	MOZ_API int newJSClassObject(const char* name);
 
 	MOZ_API int getValueMapSize();

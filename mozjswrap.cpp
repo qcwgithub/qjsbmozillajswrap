@@ -185,9 +185,9 @@ there are now 2 places calling this function:
    it will call createJSClassObject
 
 */
-bool attachFinalizerObject(MAPID id)
+void attachFinalizerObject(MAPID id)
 {
-    MGETOBJ1(id, obj, false);
+    MGETOBJ0(id, obj);
 
     JS::RootedObject fObj(g_cx, JS_NewObject(g_cx, &class_with_finalizer, 0, 0));
     JS_SetPrivate(fObj, (void*)id);
@@ -196,8 +196,6 @@ bool attachFinalizerObject(MAPID id)
     JS_DefineProperty(g_cx, obj, "__just_for_finalize", val, 0/* getter */, 0/* setter */, 0/* attr */);
 
     valueMap::setHasFinalizeOp(id, true);
-
-    return true;
 }
 
 /*
@@ -420,32 +418,32 @@ MOZ_API void ShutdownJSEngine()
     g_global = 0;
 }
 
-MOZ_API bool setProperty( MAPID id, const char* name, MAPID valueID )
+MOZ_API void setProperty( MAPID id, const char* name, MAPID valueID )
 {
-    MGETOBJ1(id, jsObj, false);
+    MGETOBJ0(id, jsObj);
 
     JS::RootedValue valValue(g_cx);
     if (!valueMap::getVal(valueID, &valValue))
     {
-        return false;
+        return;
     }
 
-    return JS_SetProperty(g_cx, jsObj, name, valValue);
+    JS_SetProperty(g_cx, jsObj, name, valValue);
 }
 
-MOZ_API bool getElement(MAPID id, int i)
+MOZ_API void getElement(MAPID id, int i)
 {
-    MGETOBJ1(id, obj, false);
+    MGETOBJ0(id, obj);
 
     JS::RootedValue val(g_cx);
     if (!JS_GetElement(g_cx, obj, i, &val))
     {
         Assert(false, "JS_GetElement fail");
-        return false;
+        return;
     }
 
     idSave = valueMap::add(val, 3);
-    return true;
+    //return _TRUE;
 }
 
 MOZ_API int getArrayLength(MAPID id)
@@ -478,15 +476,14 @@ MOZ_API void removeByID( MAPID id )
 {
     valueMap::removeByID(id, false);
 }
-MOZ_API bool moveID2Arr(int id, int arrIndex)
+MOZ_API void moveID2Arr(int id, int arrIndex)
 {
     valueArr::add(arrIndex, id);
-    return true;
 }
 
 JSObject** ppCSObj = 0;
 MAPID idErrorEntry = 0;
-bool initErrorHandler()
+_BOOL initErrorHandler()
 {
     JS::RootedObject CS_obj(g_cx, *ppCSObj);
     JS::RootedValue val(g_cx);
@@ -498,12 +495,12 @@ bool initErrorHandler()
         JS::RootedValue fval(g_cx);
         JS_ConvertValue(g_cx, val, JSTYPE_FUNCTION, &fval);
         idErrorEntry = valueMap::add(fval, 5);
-        return true;
+        return _TRUE;
     }
-    return false;
+    return _FALSE;
 }
 
-MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
+MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
 {
     static variableLengthArray<JS::Value> arrFunArg;
 
@@ -526,7 +523,7 @@ MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
     if (!valueMap::getVal(funID, &fval))
     {
         Assert(false, "callFunctionValue: get function val fail");
-        return false;
+        return;
     }
 
     jsval retVal;
@@ -569,20 +566,20 @@ MOZ_API bool callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
     valueMap::removeByID(idFunRet, false);
     JS::RootedValue rv(g_cx, retVal);
     idFunRet = valueMap::add(rv, 6);
-    return ret;
+    return;
 }
 
-MOZ_API bool setTrace(MAPID id, bool bTrace)
+MOZ_API void setTrace(MAPID id, _BOOL bTrace)
 {
-    return valueMap::setTrace(id, bTrace);
+    valueMap::setTrace(id, (bTrace == _TRUE));
 }
 
-MOZ_API bool setTempTrace(MAPID id, bool bTempTrace)
+MOZ_API void setTempTrace(MAPID id, bool bTempTrace)
 {
-    return valueMap::setTempTrace(id, bTempTrace);
+    valueMap::setTempTrace(id, bTempTrace);
 }
 
-MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
+MOZ_API _BOOL evaluate( const char* ascii, size_t length, const char* filename )
 {
     int lineno = 1;
     JS::CompileOptions options(g_cx);
@@ -591,7 +588,7 @@ MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
     if (jsScript == 0)
     {
         Assert(false, "JS_CompileScript fail");
-        return false;
+        return _FALSE;
     }
 
     //JS::RootedValue val(g_cx);
@@ -599,7 +596,7 @@ MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
     if (!JS_ExecuteScript(g_cx, g_global, jsScript, &val))
     {
         Assert(false, "JS_ExecuteScript fail");
-        return false;
+        return _FALSE;
     }
 
     // val 不需要
@@ -608,7 +605,7 @@ MOZ_API bool evaluate( const char* ascii, size_t length, const char* filename )
     // 需要吗？好像不需要吧
     //JS_AddNamedScriptRoot(g_cx, &jsScript, filename);
 
-    return true;
+    return _TRUE;
 }
 
 const jschar* getArgString(jsval* vp, int i)
@@ -649,9 +646,9 @@ MOZ_API MAPID getObjFunction(MAPID id, const char* fname)
     return 0;
 }
 
-MOZ_API void setRvalBool( jsval* vp, bool v )
+MOZ_API void setRvalBool( jsval* vp, _BOOL v )
 {
-    JS_SET_RVAL(g_cx, vp, BOOLEAN_TO_JSVAL(v));
+    JS_SET_RVAL(g_cx, vp, BOOLEAN_TO_JSVAL((v == _TRUE)));
 }
 
 MOZ_API void reportError( const char* err )
