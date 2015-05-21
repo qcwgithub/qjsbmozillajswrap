@@ -141,7 +141,7 @@ extern "C"
     MOZ_API void setDouble  (eSetType e, double v);
     MOZ_API void setIntPtr  (eSetType e, long long v);
     MOZ_API void setBoolean(eSetType e, bool v);
-    MOZ_API void setString(eSetType e, const jschar* value);
+    MOZ_API void setString(eSetType e, const char* value);
     MOZ_API void setVector2(eSetType e, float x, float y);
     MOZ_API void setVector3(eSetType e, float x, float y, float z);
     MOZ_API void setObject(eSetType e, int id);
@@ -179,7 +179,7 @@ extern "C"
     JSObject* _createJSClassObject(char* name);
     MOZ_API MAPID createJSClassObject(char* name);
     MOZ_API bool attachFinalizerObject(MAPID id);
-	MOZ_API int newJSClassObject(const jschar* name);
+	MOZ_API int newJSClassObject(const char* name);
 
 	MOZ_API int getValueMapSize();
 }

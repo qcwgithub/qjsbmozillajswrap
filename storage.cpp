@@ -209,6 +209,9 @@ void valueMap::trace(JSTracer *trc)
 			//
 			// Set name to 0 is OK? it seems OK. I'm not sure.
 			// 
+            // NOTICE: It seems 'name' here will cause memory leak if it's not 0
+            // 
+            //
             JS_CallHeapValueTracer(trc, &p->heapValue, 0 /* name */);
 			New = p->heapValue.get().asRawBits();
 			if (New != Old)

@@ -268,9 +268,9 @@ MOZ_API MAPID createJSClassObject(char* name)
     return 0;
 }
 // 如果说 JS ctor不会调用到C# 那么 createXXX newXXX 结果一样
-MOZ_API int newJSClassObject(const jschar* name)
+MOZ_API int newJSClassObject(const char* name)
 {
-    JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, name));
+    JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, name));
 
     JS::Value val;
     val.setString(jsString);
