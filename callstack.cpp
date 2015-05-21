@@ -267,7 +267,9 @@ bool valFullNameIs(JS::HandleValue val, const char* name)
 			// TODO fix memory leak
 			JS::RootedString jsStr(g_cx, v.toString());
 			const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
-			return strcmp(str, "UnityEngine.Vector2") == 0;
+			bool ret = (strcmp(str, name) == 0);
+            JS_free(g_cx, jsStr);
+            return ret;
 		}
 	}
 	return false;

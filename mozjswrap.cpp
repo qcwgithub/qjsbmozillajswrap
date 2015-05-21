@@ -327,6 +327,23 @@ void myJSTraceDataOp(JSTracer *trc, void *data)
     valueMap::trace(trc);
 }
 
+bool js_print(JSContext *cx, unsigned argc, JS::Value *vp)
+{
+#define GARG(i) (JS_ARGV(cx, vp)[(i)])
+    JS::Value& val = GARG(0);
+    if (val.isString())
+    {
+        JS::RootedString jsStr(cx, val.toString());
+        const char* _buffer = JS_EncodeStringToUTF8(cx, jsStr);
+        if (_buffer)
+        {
+            printf("C: %s\n", _buffer);
+            JS_free(cx, (void*)_buffer);
+        }
+    }
+    return true;
+}
+
 // 
 // 返回0表示没错
 //
@@ -366,6 +383,8 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
     JS_AddExtraGCRootsTracer(rt, myJSTraceDataOp, 0/* data */);
 
     registerCS(req);
+    JS_DefineFunction(cx, global, "print", js_print, 0/* narg */, 0);
+
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
     shutingDown = false;
 
