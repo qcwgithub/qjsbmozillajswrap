@@ -82,7 +82,8 @@ JS::Value getVal(eGetType e, bool bIncIndex)
 			JS::RootedObject jsObj(g_cx, &val.toObject());
 
 			JS::RootedValue v(g_cx);
-			JS_GetProperty(g_cx, jsObj, "Value", &v);
+			bool suc = JS_GetProperty(g_cx, jsObj, "Value", &v);
+            Assert(suc);
 			return v;
 		}
 		break;
@@ -181,55 +182,56 @@ const jschar* getString(eGetType e)
 	JS::RootedValue val(g_cx, getVal(e, true));
 	return val2String(val);
 }
-
-float* floatPtr[3];
-void setFloatPtr2(float* f0, float* f1)
-{
-    floatPtr[0] = f0;
-    floatPtr[1] = f1;
-}
-void setFloatPtr3(float* f0, float* f1, float* f2)
-{
-    floatPtr[0] = f0;
-    floatPtr[1] = f1;
-    floatPtr[2] = f2;
-}
-void val2Vector2(JS::HandleValue pval)
-{
-    JS::RootedObject obj(g_cx, &pval.toObject());
-
-    JS::RootedValue val(g_cx);
-
-    JS_GetProperty(g_cx, obj, "x", &val);
-    *(floatPtr[0]) = val2Number<float>(val);
-
-    JS_GetProperty(g_cx, obj, "y", &val);
-    *(floatPtr[1]) = val2Number<float>(val);
-}
-void val2Vector3(JS::HandleValue pval)
-{
-    JS::RootedObject obj(g_cx, &pval.toObject());
-
-    JS::RootedValue val(g_cx);
-
-    JS_GetProperty(g_cx, obj, "x", &val);
-    *(floatPtr[0]) = val2Number<float>(val);
-
-    JS_GetProperty(g_cx, obj, "y", &val);
-    *(floatPtr[1]) = val2Number<float>(val);
-
-    JS_GetProperty(g_cx, obj, "z", &val);
-    *(floatPtr[2]) = val2Number<float>(val);
-}
+float arrFloat[3];
 void getVector2(eGetType e)
 {
-	JS::RootedValue val(g_cx, getVal(e, true));
-	val2Vector2(val);
+    JS::RootedValue val(g_cx, getVal(e, true));
+    Assert(val.isObject());
+    JS::RootedObject obj(g_cx, &val.toObject());
+
+    JS::RootedValue v(g_cx);
+    bool suc = false;
+
+    suc = JS_GetProperty(g_cx, obj, "x", &v);
+    Assert(suc);
+    arrFloat[0] = val2Number<float>(v);
+
+    suc = JS_GetProperty(g_cx, obj, "y", &v);
+    Assert(suc);
+    arrFloat[1] = val2Number<float>(v);
 }
 void getVector3(eGetType e)
 {
-	JS::RootedValue val(g_cx, getVal(e, true));
-	val2Vector3(val);
+    JS::RootedValue val(g_cx, getVal(e, true));
+    Assert(val.isObject());
+    JS::RootedObject obj(g_cx, &val.toObject());
+
+    JS::RootedValue v(g_cx);
+    bool suc = false;
+
+    suc = JS_GetProperty(g_cx, obj, "x", &v);
+    Assert(suc);
+    arrFloat[0] = val2Number<float>(v);
+
+    suc = JS_GetProperty(g_cx, obj, "y", &v);
+    Assert(suc);
+    arrFloat[1] = val2Number<float>(v);
+
+    suc = JS_GetProperty(g_cx, obj, "z", &v);
+    Assert(suc);
+    arrFloat[2] = val2Number<float>(v);
+}
+float getObjX()
+{
+    return arrFloat[0];
+}
+float getObjY()
+{
+    return arrFloat[1];
+}
+float getObjZ()
+{
+    return arrFloat[2];
 }
 int getObject(eGetType e)
 {

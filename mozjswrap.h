@@ -122,12 +122,12 @@ extern "C"
     MOZ_API _BOOL getBoolean(eGetType e);
     MOZ_API const jschar* getString(eGetType e);
 
-    MOZ_API void setFloatPtr2(float* f0, float* f1);
-    MOZ_API void setFloatPtr3(float* f0, float* f1, float* f2);
-    void val2Vector2(JS::HandleValue pval);
     MOZ_API void getVector2(eGetType e);
-    void val2Vector3(JS::HandleValue pval);
     MOZ_API void getVector3(eGetType e);
+    MOZ_API float getObjX();
+    MOZ_API float getObjY();
+    MOZ_API float getObjZ();
+
     MOZ_API int getObject(eGetType e);
     MOZ_API _BOOL isFunction(eGetType e);
     MOZ_API int getFunction(eGetType e);
