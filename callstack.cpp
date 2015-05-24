@@ -268,7 +268,7 @@ bool valFullNameIs(JS::HandleValue val, const char* name)
 			JS::RootedString jsStr(g_cx, v.toString());
 			const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
 			bool ret = (strcmp(str, name) == 0);
-            JS_free(g_cx, jsStr);
+            // JS_free(g_cx, jsStr);
             return ret;
 		}
 	}
