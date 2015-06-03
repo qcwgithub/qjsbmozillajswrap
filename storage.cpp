@@ -294,6 +294,17 @@ MAPID valueMap::containsValue(JS::Value v)
     return 0;
 }
 
+bool valueMap::isTraced(MAPID id)
+{
+	VALUEMAPIT it = mMap.find(id);
+	if (it != mMap.end())        
+	{
+		stHeapValue& hv = it->second;
+		return hv.bTrace;
+	}
+	return false;
+}
+
 bool valueMap::setTrace(MAPID id, bool trace)
 {
     VALUEMAPIT it = mMap.find(id);

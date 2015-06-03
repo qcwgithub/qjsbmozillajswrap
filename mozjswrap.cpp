@@ -574,6 +574,14 @@ MOZ_API void setTrace(MAPID id, _BOOL bTrace)
     valueMap::setTrace(id, (bTrace == _TRUE));
 }
 
+MOZ_API _BOOL isTraced(MAPID id)
+{
+	if (valueMap::isTraced(id))
+		return _TRUE;
+	else
+		return _FALSE;
+}
+
 MOZ_API void setTempTrace(MAPID id, bool bTempTrace)
 {
     valueMap::setTempTrace(id, bTempTrace);

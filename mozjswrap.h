@@ -164,7 +164,8 @@ extern "C"
     MOZ_API void moveID2Arr(int id, int arrIndex);
 
     MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount);
-    MOZ_API void setTrace(MAPID id, _BOOL bTrace);
+	MOZ_API void setTrace(MAPID id, _BOOL bTrace);
+    MOZ_API _BOOL isTraced(MAPID id);
     MOZ_API void setTempTrace(MAPID id, _BOOL bTempTrace);
 
     // 目前仅用于 arg，不够用的话要再加 (GetType e) 参数
@@ -301,6 +302,7 @@ public:
     static MAPID getID(const JS::Value& val, bool autoAdd);
     static bool removeByID( MAPID i, bool bForce );
     static MAPID containsValue(JS::Value v);
+	static bool isTraced(MAPID id);
     static bool setTrace(MAPID id, bool trace);
     static bool setTempTrace(MAPID id, bool tempTrace);
     static bool setHasFinalizeOp(MAPID id, bool has);
