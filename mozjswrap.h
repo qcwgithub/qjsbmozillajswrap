@@ -44,6 +44,7 @@ extern MAPID idSave; //往valueMap添加后得到的ID
 
 extern JSObject** ppCSObj;
 extern MAPID idErrorEntry;
+extern bool shutingDown;
 
 // marshal
 // it seems they treat bool as int
@@ -164,6 +165,8 @@ extern "C"
     MOZ_API void moveID2Arr(int id, int arrIndex);
 
     MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount);
+	MOZ_API int incRefCount(MAPID id);
+	MOZ_API int decRefCount(MAPID id);
 	MOZ_API void setTrace(MAPID id, _BOOL bTrace);
     MOZ_API _BOOL isTraced(MAPID id);
     MOZ_API void setTempTrace(MAPID id, _BOOL bTempTrace);
@@ -243,6 +246,7 @@ public:
 struct stHeapValue
 {
     JS::Heap<JS::Value> heapValue;
+	int refCount;
     bool bTempTrace;
 
     // bTrace and hasFinalizeOp
@@ -251,8 +255,8 @@ struct stHeapValue
     bool bTrace;
     bool hasFinalizeOp;
 	char mark;
-    stHeapValue() : bTrace(false), bTempTrace(false), hasFinalizeOp(false), mark(0) {}
-    stHeapValue(JS::HandleValue val) : bTrace(false), bTempTrace(false), hasFinalizeOp(false), heapValue(val), mark(0) {}
+    stHeapValue() : refCount(0), bTrace(false), bTempTrace(false), hasFinalizeOp(false), mark(0) {}
+    stHeapValue(JS::HandleValue val) : refCount(0), bTrace(false), bTempTrace(false), hasFinalizeOp(false), heapValue(val), mark(0) {}
 };
 
 // get object, ignore failure
@@ -283,6 +287,9 @@ struct stHeapValue
 
 class valueMap
 {
+	// SpiderMonkey'GC is moving GC
+	// which means object's address may change after GC
+	// so we put object's jsval in stHeapValue structure to make sure always having newest address
     typedef map<int, stHeapValue > VALUEMAP;
     typedef VALUEMAP::iterator VALUEMAPIT;
     static VALUEMAP mMap;
@@ -302,6 +309,8 @@ public:
     static MAPID getID(const JS::Value& val, bool autoAdd);
     static bool removeByID( MAPID i, bool bForce );
     static MAPID containsValue(JS::Value v);
+	static int incRefCount(MAPID id);
+	static int decRefCount(MAPID id);
 	static bool isTraced(MAPID id);
     static bool setTrace(MAPID id, bool trace);
     static bool setTempTrace(MAPID id, bool tempTrace);

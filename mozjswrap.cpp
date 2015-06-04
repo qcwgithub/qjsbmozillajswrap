@@ -189,6 +189,9 @@ void attachFinalizerObject(MAPID id)
 {
     MGETOBJ0(id, obj);
 
+	//
+	// obj.__just_for_finalize = fObj
+	//
     JS::RootedObject fObj(g_cx, JS_NewObject(g_cx, &class_with_finalizer, 0, 0));
     JS_SetPrivate(fObj, (void*)id);
     JS::RootedValue val(g_cx);
@@ -569,6 +572,15 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
     return;
 }
 
+
+MOZ_API int incRefCount(MAPID id)
+{
+	return valueMap::incRefCount(id);
+}
+MOZ_API int decRefCount(MAPID id)
+{
+	return valueMap::decRefCount(id);
+}
 MOZ_API void setTrace(MAPID id, _BOOL bTrace)
 {
     valueMap::setTrace(id, (bTrace == _TRUE));

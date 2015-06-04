@@ -185,6 +185,11 @@ int valueMap::index = 1;
 bool valueMap::tracing = false;
 std::list<int> valueMap::LstTempID;
 
+
+//
+// trace protects objects from being collected
+//
+//
 void valueMap::trace(JSTracer *trc)
 {
     Assert(!valueMap::tracing);
@@ -203,7 +208,7 @@ void valueMap::trace(JSTracer *trc)
 		//stHeapValue* p = it->second;
         stHeapValue* p = &it->second;
         
-        if (p->bTrace || p->bTempTrace)
+        if (p->bTrace || p->bTempTrace || p->refCount > 0)
         {
 			Old = p->heapValue.get().asRawBits();
 			//
@@ -294,6 +299,44 @@ MAPID valueMap::containsValue(JS::Value v)
     return 0;
 }
 
+int valueMap::incRefCount(MAPID id)
+{
+	VALUEMAPIT it = mMap.find(id);
+	if (it != mMap.end())  
+	{
+		stHeapValue& hv = it->second;
+		hv.refCount++;
+		return hv.refCount;
+	}
+	else
+	{
+		if (!shutingDown) 
+			Assert(false, "valueMap::incRefCount fail");
+		return -1;
+	}
+}
+int valueMap::decRefCount(MAPID id)
+{
+	VALUEMAPIT it = mMap.find(id);
+	if (it != mMap.end())
+	{
+		stHeapValue& hv = it->second;
+		hv.refCount--;
+		Assert(hv.refCount >= 0);
+		int ret = hv.refCount;
+		if (hv.refCount <= 0)
+		{
+			removeByID(id, false);
+		}
+		return ret;
+	}
+	else
+	{
+		if (!shutingDown) 
+			Assert(false, "valueMap::decRefCount fail");
+		return -1;
+	}
+}
 bool valueMap::isTraced(MAPID id)
 {
 	VALUEMAPIT it = mMap.find(id);
@@ -362,7 +405,8 @@ bool valueMap::removeByID( MAPID i, bool bForce )
         stHeapValue* p = &it->second;
         p->bTempTrace = false;
         Assert(!(p->bTrace && p->hasFinalizeOp), "trace and finalize are both true!!!");
-        if (bForce || (!p->bTrace && !p->hasFinalizeOp))
+
+        if (bForce || (!p->bTrace && !p->hasFinalizeOp && p->refCount <= 0))
         {
             Assert(!valueMap::tracing);
 
