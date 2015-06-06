@@ -56,7 +56,7 @@
 
                 ['OS == "win"', 
                 {
-                    'include_dirs+': ['<(source_path)/spidermonkey/include/win32','<(source_path)/debugger/cocos/win32'],
+                    'include_dirs+': ['<(source_path)/spidermonkey/include/win32_v31','<(source_path)/debugger/cocos/win32'],
                     'sources+': ['<(source_path)/dllmain.cpp',],
                     'conditions': 
                     [
@@ -68,7 +68,7 @@
                     'msbuild_settings': {
                             'Link': {
                                 'AdditionalDependencies': [
-                                    '../spidermonkey/prebuilt/win32/mozjs-28.lib',
+                                    '../spidermonkey/prebuilt/win32_v31/mozjs-31.lib',
                                 ],
                             },
                     },
@@ -76,8 +76,8 @@
                         {
                           'destination': '<(PRODUCT_DIR)bin',
                           'files': [
-                            '<(source_path)/spidermonkey/prebuilt/win32/mozjs-28.lib',
-                            '<(source_path)/spidermonkey/prebuilt/win32/mozjs-28.dll',
+                            '<(source_path)/spidermonkey/prebuilt/win32_v31/mozjs-31.lib',
+                            '<(source_path)/spidermonkey/prebuilt/win32_v31/mozjs-31.dll',
                           ],
                         },
                     ],
