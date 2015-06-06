@@ -367,10 +367,13 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
         return 1;
     }
 
-    rt = JS_NewRuntime(8 * 1024 * 1024, JS_NO_HELPER_THREADS);
+	rt = JS_NewRuntime(8 * 1024 * 1024, JS_NO_HELPER_THREADS);
+	JS_SetGCParameter(rt, JSGC_MAX_BYTES, 0xffffffff);
     JS_SetNativeStackQuota(rt, 500000, 0, 0);
 
     cx = JS_NewContext(rt, 8192);
+	JS::RuntimeOptionsRef(rt).setIon(true);
+	JS::RuntimeOptionsRef(rt).setBaseline(true);
 
     // Set error reporter
     JS_SetErrorReporter(cx, er);
