@@ -150,8 +150,8 @@ T val2Number(JS::HandleValue val)
         return (T)val.toInt32();
 }
 
-extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
-const jschar* val2String(JS::HandleValue val)
+//extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
+char* val2String(JS::HandleValue val)
 {
     JS::RootedString jsStr(g_cx, val.toString());
     return getMarshalStringFromJSString(g_cx, jsStr);
@@ -182,7 +182,7 @@ _BOOL getBoolean(eGetType e)
 {
 	return (getVal(e, true).toBoolean() ? _TRUE : _FALSE);
 }
-const jschar* getString(eGetType e) 
+char* getString(eGetType e) 
 {
 	JS::RootedValue val(g_cx, getVal(e, true));
 	return val2String(val);

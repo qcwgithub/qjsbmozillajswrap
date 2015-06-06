@@ -27,13 +27,14 @@ void* getMarshalMemory(int len)
     return marshalMemory;
 }
 
-jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr)
+char* getMarshalStringFromJSString(JSContext* cx, JS::HandleString jsStr)
 {
-    size_t length = 0;
-    const jschar* ori = JS_GetStringCharsAndLength(cx, jsStr, &length);
-    jschar* rt = (jschar*)::getMarshalMemory(sizeof(jschar) * (length + 1));
+    char* ori = JS_EncodeStringToUTF8(cx, jsStr);
+	int length = strlen(ori);
+    char* rt = (char*)::getMarshalMemory(length + 1);
     rt[length] = 0;
-    memcpy(rt, ori, length * sizeof(jschar));
+    memcpy(rt, ori, length);
+	JS_free(cx, (void*)ori);
     return rt;
 }
 
@@ -643,7 +644,7 @@ MOZ_API _BOOL evaluate( const char* ascii, size_t length, const char* filename )
     return _TRUE;
 }
 
-const jschar* getArgString(jsval* vp, int i)
+const char* getArgString(jsval* vp, int i)
 {
     JS::RootedValue val(g_cx, JS_ARGV(g_cx, vp)[i]);
     Assert(val.isString());

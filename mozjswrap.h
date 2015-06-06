@@ -61,6 +61,8 @@ extern bool shutingDown;
 #define JS_SET_RVAL(cx,vp,v)    (*(vp) = (v))
 #endif
 
+
+char* getMarshalStringFromJSString(JSContext* cx, JS::HandleString jsStr);
 extern "C"
 {
 	/*
@@ -110,10 +112,7 @@ extern "C"
     MOZ_API void setArgIndex(int i);
     MOZ_API int incArgIndex();
 
-
-
-    extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
-    const jschar* val2String(JS::HandleValue pval);
+    char* val2String(JS::HandleValue pval);
 
 	MOZ_API unsigned int getTag(eGetType e);
     MOZ_API short           getChar    (eGetType e);
@@ -130,7 +129,7 @@ extern "C"
     MOZ_API double          getDouble  (eGetType e);
     MOZ_API long long       getIntPtr  (eGetType e);
     MOZ_API _BOOL getBoolean(eGetType e);
-    MOZ_API const jschar* getString(eGetType e);
+    MOZ_API char* getString(eGetType e);
 
     MOZ_API void getVector2(eGetType e);
     MOZ_API void getVector3(eGetType e);
@@ -188,7 +187,7 @@ extern "C"
     /////////////////////////////////////////////////////////////////////
 
     MOZ_API _BOOL evaluate(const char* ascii, size_t length, const char* filename);
-    MOZ_API const jschar* getArgString(jsval* vp, int i);
+    MOZ_API const char* getArgString(jsval* vp, int i);
     MOZ_API void setRvalBool(jsval* vp, _BOOL v);
     MOZ_API MAPID getObjFunction(MAPID id, const char* fname);
 
