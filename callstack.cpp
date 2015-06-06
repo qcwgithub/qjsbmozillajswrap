@@ -12,16 +12,21 @@ int argIndex = 0;
 // 实际几个参数
 int actualArgc = 0;
 
-#define ArgVal(i) (JS_ARGV(g_cx, g_vp)[(i)])
+JS::CallArgs* p_args = 0;
+#define ArgVal(i) (p_args->get(i))
 
 MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
 MAPID idSave = 0; //往valueMap添加后得到的ID
+
 
 CSEntry csEntry = 0; 
 bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
 {
     g_vp = vp;
     g_argc = argc;
+
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+	p_args = &args;
 
     int op = ArgVal(0).toInt32();
     int slot = ArgVal(1).toInt32();
@@ -41,7 +46,7 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     bool ret = csEntry(op, slot, index, (isStatic ? 1 : 0), actualArgc - argIndex);
 
 	valueMap::_clearTempIDs();
-
+	p_args = 0;
     return ret;
 }
 
@@ -148,7 +153,7 @@ T val2Number(JS::HandleValue val)
 extern jschar* getMarshalStringFromJSString(JSContext* cx, JSString* jsStr);
 const jschar* val2String(JS::HandleValue val)
 {
-    JSString* jsStr = val.toString();
+    JS::RootedString jsStr(g_cx, val.toString());
     return getMarshalStringFromJSString(g_cx, jsStr);
 }
 
@@ -268,7 +273,7 @@ bool valFullNameIs(JS::HandleValue val, const char* name)
 			JS::RootedString jsStr(g_cx, v.toString());
 			const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
 			bool ret = (strcmp(str, name) == 0);
-            // JS_free(g_cx, jsStr);
+            JS_free(g_cx, (void*)str);
             return ret;
 		}
 	}
@@ -415,14 +420,14 @@ void setFunction(eSetType e, int funID)
 }
 void setArray(eSetType e, int count, _BOOL bClear)
 {
-    JSObject* _t = JS_NewArrayObject(g_cx, count, 0 /* jsval* */);
+    JSObject* _t = JS_NewArrayObject(g_cx, count);
     JS::RootedObject arrObj(g_cx, _t);
     for (int i = 0; i < count; i++)
     {
         JS::RootedValue val(g_cx);
         bool b = valueMap::getVal(valueArr::arr[i], &val);
         Assert(b);
-        JS_SetElement(g_cx, arrObj, i, &val);
+        JS_SetElement(g_cx, arrObj, i, val);
     }
     // clear value array
     valueArr::clear(bClear == _TRUE);

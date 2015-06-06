@@ -9,7 +9,7 @@
 #endif
 
 #include "jsapi.h"
-#include "js/tracer.h"
+//#include "js/tracer.h"
 #include <vector>
 #include <map>
 #include <list>
@@ -27,7 +27,6 @@ using namespace std;
 // 2
 #include <assert.h>
 #define Assert assert
-
 #else
 #define Assert
 #define MOZ_API
@@ -42,7 +41,7 @@ typedef int MAPID;
 extern MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
 extern MAPID idSave; //往valueMap添加后得到的ID
 
-extern JSObject** ppCSObj;
+extern JS::Heap<JSObject*>* ppCSObj;
 extern MAPID idErrorEntry;
 extern bool shutingDown;
 
@@ -51,6 +50,16 @@ extern bool shutingDown;
 #define _BOOL int
 #define _FALSE 0
 #define _TRUE 1
+
+
+#ifndef JS_ARGV
+#define JS_ARGV(cx,vp)          ((vp) + 2)
+#endif
+
+
+#ifndef JS_SET_RVAL
+#define JS_SET_RVAL(cx,vp,v)    (*(vp) = (v))
+#endif
 
 extern "C"
 {
