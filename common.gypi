@@ -70,7 +70,7 @@
                                 'DebugInformationFormat': 'EditAndContinue',                 # editAndContiue (/ZI)
                                 'Optimization': 'Disabled',                                   # optimizeDisabled (/Od)
                                 'PreprocessorDefinitions': ['_DEBUG'],                        #预处理器定义
-                                'RuntimeLibrary': 'MultiThreadedDebug',                     # rtMultiThreadedDebugDLL (/MTd)
+                                'RuntimeLibrary': 'MultiThreadedDebugDLL',                     # rtMultiThreadedDebug (/MTd)
                                 #'RuntimeTypeInfo': 'false',                                  # /GR-
                                 'IntrinsicFunctions': 'false'                                #启用内部函数（否）
                             },
@@ -90,7 +90,7 @@
                                 'Optimization': 'MaxSpeed',                                    # optimizeDisabled (/O2)
                                 'WholeProgramOptimization': 'true',                         #/GL
                                  'PreprocessorDefinitions': ['NDEBUG'],
-                                'RuntimeLibrary': 'MultiThreaded',                          # rtMultiThreadedDLL (/MT)
+                                'RuntimeLibrary': 'MultiThreadedDLL',                          # rtMultiThreaded (/MT)
                                 #'RuntimeTypeInfo': 'false',                                 # /GR-
                                 'IntrinsicFunctions': 'true'                                #启用内部函数（是）
                             },
