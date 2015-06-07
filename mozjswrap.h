@@ -9,6 +9,7 @@
 #endif
 
 #include "jsapi.h"
+#include "mozilla/Maybe.h"
 //#include "js/tracer.h"
 #include <vector>
 #include <map>
@@ -34,14 +35,14 @@ using namespace std;
 
 extern JSRuntime* g_rt;
 extern JSContext* g_cx;
-extern JSObject* g_global;
+extern mozilla::Maybe<JS::PersistentRootedObject> g_global;
 
 typedef int MAPID;
 
 extern MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
 extern MAPID idSave; //往valueMap添加后得到的ID
 
-extern JS::Heap<JSObject*>* ppCSObj;
+extern JS::Heap<JSObject*> ppCSObj;
 extern MAPID idErrorEntry;
 extern bool shutingDown;
 

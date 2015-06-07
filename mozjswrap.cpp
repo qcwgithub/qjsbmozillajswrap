@@ -40,7 +40,8 @@ char* getMarshalStringFromJSString(JSContext* cx, JS::HandleString jsStr)
 
 JSRuntime* g_rt = 0;
 JSContext* g_cx = 0;
-JSObject* g_global = 0;
+//JSObject* g_global = 0;
+mozilla::Maybe<JS::PersistentRootedObject> g_global;
 OnObjCollected onObjCollected = 0;
 bool shutingDown = false;
 void sc_finalize(JSFreeOp* freeOp, JSObject* obj)
@@ -138,7 +139,7 @@ JSObject* GetJSTableByName(char* name)
     const char* n = split.next();
     if (!n) return 0;
 
-    JS::RootedObject obj(g_cx, g_global);
+    JS::RootedObject obj(g_cx, g_global.ref().get());
     JS::RootedValue val(g_cx);
     while (n)
     {
@@ -280,7 +281,7 @@ MOZ_API int newJSClassObject(const char* name)
     val.setString(jsString);
 
     JS::RootedValue _rval(g_cx);
-	JS::RootedObject roGlobal(g_cx, g_global);
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
     if (JS_CallFunctionName(g_cx, roGlobal, "jsb_CallObjectCtor", JS::HandleValueArray::fromMarkedLocation(1, &val), &_rval))
     {
         //JS::RootedValue rval(g_cx, _rval);
@@ -319,14 +320,14 @@ void registerCS(JSNative req)
     JS::RootedValue val(g_cx);
     val.setObject(*CS_obj);
 
-	JS::RootedObject roGlobal(g_cx, g_global);
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
     JS_DefineProperty(g_cx, roGlobal, "CS", val, 0/* getter */, 0/* setter */, 0/* attr */);
     JS_DefineFunction(g_cx, CS_obj, "Call", JSCall, 0/* narg */, 0);
     JS_DefineFunction(g_cx, CS_obj, "require", req, 0/* narg */, 0);
 
-    ppCSObj = new JS::Heap<JSObject *>(CS_obj);
+    ppCSObj = CS_obj;
     //*ppCSObj = CS_obj;
-    JS::AddObjectRoot(g_cx, ppCSObj);
+    JS::AddObjectRoot(g_cx, &ppCSObj);
 }
 
 void myJSTraceDataOp(JSTracer *trc, void *data)
@@ -360,7 +361,6 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
 {
     JSRuntime*& rt = g_rt;
     JSContext*& cx = g_cx;
-    JSObject*& global = g_global;
 
     if (!JS_Init())
     {
@@ -379,12 +379,13 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
     JS_SetErrorReporter(cx, er);
 
     JS::CompartmentOptions options;
-	options.setVersion(JSVERSION_LATEST);
-	global = JS_NewGlobalObject(cx, &global_class, 0/*principals*/, JS::DontFireOnNewGlobalHook, options);
-	JS::RootedObject roGlobal(g_cx, global);
+	//options.setVersion(JSVERSION_LATEST);
+	g_global.construct(cx);
+	g_global.ref() = JS_NewGlobalObject(cx, &global_class, 0/*principals*/, JS::DontFireOnNewGlobalHook, options);
+	//JSObject*& global = g_global;
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
 
-        
-    oldCompartment = JS_EnterCompartment(cx, global);
+    oldCompartment = JS_EnterCompartment(cx, g_global.ref().get());
     if (!JS_InitStandardClasses(cx, roGlobal))
     {
         return 2;
@@ -409,8 +410,8 @@ MOZ_API void ShutdownJSEngine()
     shutingDown = true;
 	if (ppCSObj)
 	{
-		JS::RemoveObjectRoot(g_cx, ppCSObj);
-		delete ppCSObj;
+		JS::RemoveObjectRoot(g_cx, &ppCSObj);
+		//delete ppCSObj;
 		ppCSObj = 0;
 	}
 	idErrorEntry = 0;
@@ -428,8 +429,8 @@ MOZ_API void ShutdownJSEngine()
 	JS_ShutDown();
 
     g_cx = 0;
-    g_rt = 0;
-    g_global = 0;
+	g_rt = 0;
+	g_global.destroy();
 }
 
 MOZ_API void setProperty( MAPID id, const char* name, MAPID valueID )
@@ -495,11 +496,11 @@ MOZ_API void moveID2Arr(int id, int arrIndex)
     valueArr::add(arrIndex, id);
 }
 
-JS::Heap<JSObject*>* ppCSObj = 0;
+JS::Heap<JSObject*> ppCSObj;
 MAPID idErrorEntry = 0;
 _BOOL initErrorHandler()
 {
-    JS::RootedObject CS_obj(g_cx, *ppCSObj);
+    JS::RootedObject CS_obj(g_cx, ppCSObj);
     JS::RootedValue val(g_cx);
     JS_GetProperty(g_cx, CS_obj, "jsFunctionEntry", &val);
 
@@ -514,20 +515,93 @@ _BOOL initErrorHandler()
     return _FALSE;
 }
 
+#include <set>
+class funArgArrayMgr
+{
+	static std::set<JS::Value*> setFree;
+	static std::set<JS::Value*> setUsed;
+	static const int LENGTH = 16; // array length
+	static bool inited;
+	static int maxLength;
+
+	static JS::Value* newArray()
+	{
+		return new JS::Value[LENGTH];
+	}
+	static void init()
+	{
+		if (inited) 
+			return;
+		for (int i = 0; i < 16; i++)
+		{
+			setFree.insert(newArray());
+		}
+		inited = true;
+	}
+	static void reset()
+	{
+		if (inited)
+		{
+			setFree.insert(setUsed.begin(), setUsed.end());
+			setUsed.clear();
+		}
+	}
+
+public:
+	static JS::Value* get(int length)
+	{
+		if (!inited)
+		{
+			init();
+		}
+
+		if (length > maxLength)
+			maxLength = length;
+
+		if (length <= LENGTH)
+		{
+			std::set<JS::Value*>::iterator it = setFree.begin();
+			if (it != setFree.end())
+			{
+				JS::Value* p = *it;
+				setFree.erase(it);
+				setUsed.insert(p);
+				return p;
+			}
+			else
+			{
+				JS::Value* p = newArray();
+				setUsed.insert(p);
+				return p;
+			}
+		}
+		else
+		{
+			return new JS::Value[length];
+		}
+	}
+	static void giveBack(JS::Value* arr)
+	{
+		std::set<JS::Value*>::iterator it = setUsed.find(arr);
+		if (it != setUsed.end())
+		{
+			setUsed.erase(it);
+			setFree.insert(arr);
+		}
+		else
+		{
+			delete[] arr;
+		}
+	}
+};
+std::set<JS::Value*> funArgArrayMgr::setFree;
+std::set<JS::Value*> funArgArrayMgr::setUsed;
+bool funArgArrayMgr::inited = false;
+int funArgArrayMgr::maxLength = 0;
+
 MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
 {
-    static variableLengthArray<JS::Value> arrFunArg;
-
-//     JS::RootedObject jsObj(g_cx, 0);
-// 
-//     JS::RootedValue objVal(g_cx);
-//     if (valueMap::getVal(jsObjID, &objVal) &&
-//         objVal.isObject())
-//     {
-//         jsObj = &objVal.toObject();
-//     }
-
-    MGETOBJ0(jsObjID, jsObj);
+	MGETOBJ0(jsObjID, jsObj);
     if (jsObj == 0)
     {
         // no error
@@ -545,7 +619,7 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
 
     if (idErrorEntry > 0)
     {
-        JS::Value* arr = arrFunArg.get(argCount + 2);
+		JS::Value* arr = funArgArrayMgr::get(argCount + 2);
         arr[0].setObjectOrNull(jsObj);
         arr[1] = fval;
         JS::RootedValue ele(g_cx);
@@ -557,8 +631,10 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
         JS::RootedValue entryVal(g_cx);
         valueMap::getVal(idErrorEntry, &entryVal);
 
-		JS::RootedObject roCSObj(g_cx, *ppCSObj);
+		//JSAutoCompartment ac(g_cx, ppCSObj);
+		JS::RootedObject roCSObj(g_cx, ppCSObj);
         ret = JS_CallFunctionValue(g_cx, roCSObj, entryVal, JS::HandleValueArray::fromMarkedLocation(argCount + 2, arr), &retVal);
+		funArgArrayMgr::giveBack(arr);
     }
     else
     {
@@ -568,7 +644,7 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
         }
         else
         {
-            JS::Value* arr = arrFunArg.get(argCount);
+			JS::Value* arr = funArgArrayMgr::get(argCount);
             JS::RootedValue ele(g_cx);
             for (int i = 0; i < argCount; i++)
             {
@@ -576,7 +652,8 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
                 arr[i] = ele;
             }
 
-            ret = JS_CallFunctionValue(g_cx, jsObj, fval, JS::HandleValueArray::fromMarkedLocation(argCount, arr), &retVal);
+			ret = JS_CallFunctionValue(g_cx, jsObj, fval, JS::HandleValueArray::fromMarkedLocation(argCount, arr), &retVal);
+			funArgArrayMgr::giveBack(arr);
         }
     }
 
@@ -623,7 +700,7 @@ MOZ_API _BOOL evaluate( const char* ascii, size_t length, const char* filename )
 	options.setUTF8(true);
 	options.setFileAndLine(filename, 1);
 
-	JS::RootedObject roGlobal(g_cx, g_global);
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
     JS::RootedScript jsScript(g_cx, JS_CompileScript(g_cx, roGlobal, ascii, length, options));
     if (jsScript == 0)
     {
