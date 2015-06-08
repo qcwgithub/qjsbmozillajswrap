@@ -110,6 +110,10 @@ int* valueArr::makeSureArrHeapObj(int index)
 
 void valueArr::add(int arrIndex, MAPID iMap)
 {
+	if (arrIndex == 0)
+	{
+		Assert(lastIndex == -1);
+	}
     lastIndex = arrIndex;
     int* arr = makeSureArrHeapObj(arrIndex);
     arr[arrIndex] = iMap;
@@ -257,6 +261,7 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
     if (J == 0) J = 1;
 
 	Assert(!valueMap::tracing);
+	Assert(mMap.find(J) == mMap.end());
 
 	// 1)
 	mMap.insert(VALUEMAP::value_type(J, p));
@@ -394,6 +399,8 @@ bool valueMap::clear()
 //     }
     mMap.clear();
 	VMap.clear();
+	//LstTempID.clear();
+	//index = 1;
     return 0;
 }
 

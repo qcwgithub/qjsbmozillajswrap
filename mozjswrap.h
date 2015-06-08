@@ -42,7 +42,7 @@ typedef int MAPID;
 extern MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
 extern MAPID idSave; //往valueMap添加后得到的ID
 
-extern JS::Heap<JSObject*> ppCSObj;
+extern JS::Heap<JSObject*>* ppCSObj;
 extern MAPID idErrorEntry;
 extern bool shutingDown;
 
@@ -375,7 +375,7 @@ struct SplitUtil
     static variableLengthArray<char> sArr;
     SplitUtil(char* s, const char* sp) 
     { 
-        int len = strlen(s);
+        size_t len = strlen(s);
         char* _s = sArr.get(len + 1);
         memcpy(_s, s, len);
         _s[len] = 0;

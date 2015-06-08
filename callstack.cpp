@@ -15,7 +15,7 @@ int actualArgc = 0;
 JS::CallArgs* p_args = 0;
 #define ArgVal(i) (p_args->get(i))
 
-MAPID idFunRet; // callFunctionValue后，往 valueMap 添加后得到的IDI
+MAPID idFunRet = 0; // callFunctionValue后，往 valueMap 添加后得到的IDI
 MAPID idSave = 0; //往valueMap添加后得到的ID
 
 
@@ -43,7 +43,7 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     }
 
     argIndex = 4;
-    bool ret = csEntry(op, slot, index, (isStatic ? 1 : 0), actualArgc - argIndex);
+	bool ret = (_TRUE == csEntry(op, slot, index, (isStatic ? 1 : 0), actualArgc - argIndex));
 
 	valueMap::_clearTempIDs();
 	p_args = 0;
@@ -328,7 +328,7 @@ void setVal(eSetType e, JS::HandleValue val)
 template<class T>
 void setNumberI(eSetType e, T value)
 {
-    JS::RootedValue val(g_cx, INT_TO_JSVAL((double)value));
+    JS::RootedValue val(g_cx, INT_TO_JSVAL((int)value));
 	setVal(e, val);
 }
 
