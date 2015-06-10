@@ -201,6 +201,7 @@ extern "C"
 	MOZ_API int newJSClassObject(const char* name);
 
 	MOZ_API int getValueMapSize();
+	MOZ_API int getValueMapIndex();
 }
 
 extern CSEntry csEntry;
@@ -307,6 +308,7 @@ class valueMap
 
     typedef map<uint64_t, MAPID > VMAP;
 	static VMAP VMap;
+	static list<int> lstFree;
 
 	static std::list<int> LstTempID;
 
@@ -330,6 +332,7 @@ public:
 
 	static void _addTempID(MAPID id) { LstTempID.push_back(id); }
 	static void _clearTempIDs();
+	static int getIndex() { return index; }
 };
 
 // class objRoot

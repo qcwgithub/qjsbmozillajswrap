@@ -185,6 +185,7 @@ void valueArr::clear(bool bClear)
 
 valueMap::VALUEMAP valueMap::mMap;
 valueMap::VMAP valueMap::VMap;
+list<int> valueMap::lstFree;
 int valueMap::index = 1;
 bool valueMap::tracing = false;
 std::list<int> valueMap::LstTempID;
@@ -257,8 +258,17 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
 	stHeapValue p(val);
 	p.mark = mark;
 
-	int& J = valueMap::index;
-    if (J == 0) J = 1;
+	int J = 0;
+	list<int>::iterator itBegin = lstFree.begin();
+	if (itBegin != lstFree.end())
+	{
+		J = *itBegin;
+		lstFree.erase(itBegin);
+	}
+	else
+	{
+		J = valueMap::index++;
+	}
 
 	Assert(!valueMap::tracing);
 	Assert(mMap.find(J) == mMap.end());
@@ -270,7 +280,7 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
 	// 2)
 	VMap.insert(VMAP::value_type(p.heapValue.get().asRawBits(), J));
     
-    return J++;
+    return J;
 }
 
 MAPID valueMap::addFunction(JS::HandleValue val)
@@ -399,8 +409,9 @@ bool valueMap::clear()
 //     }
     mMap.clear();
 	VMap.clear();
-	//LstTempID.clear();
-	//index = 1;
+	LstTempID.clear();
+	index = 1;
+	lstFree.clear();
     return 0;
 }
 
@@ -416,6 +427,9 @@ bool valueMap::removeByID( MAPID i, bool bForce )
         if (bForce || (!p->bTrace && !p->hasFinalizeOp && p->refCount <= 0))
         {
             Assert(!valueMap::tracing);
+
+			// 0)
+			lstFree.push_back(it->first);
 
 			// 1)
 			VMAP::iterator vit = VMap.find(it->second.heapValue.get().asRawBits());

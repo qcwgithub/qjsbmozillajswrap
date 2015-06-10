@@ -782,3 +782,7 @@ MOZ_API int getValueMapSize()
 {
 	return valueMap::getMapSize();
 }
+MOZ_API int getValueMapIndex()
+{
+	return valueMap::getIndex();
+}
