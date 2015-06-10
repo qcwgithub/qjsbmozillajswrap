@@ -410,7 +410,17 @@ bool valueMap::clear()
     mMap.clear();
 	VMap.clear();
 	LstTempID.clear();
-	index = 1;
+
+	/*
+	IMPORTANT
+	DO NOT reset index
+	In UnityEditor, it may Init JS engine, shut it down, init it, shut it down,... many times
+	removeByID may be called from C#'s destructor, the destructor may remove a ID belonging to last 'round'
+	so we let index always increase
+	*/
+	// index = 1;
+
+
 	lstFree.clear();
     return 0;
 }
