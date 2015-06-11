@@ -60,7 +60,8 @@ static JSClass global_class =
 	"global", JSCLASS_GLOBAL_FLAGS,
 	JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
 	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
-	0,0,0,0,{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	0,0,0,JS_GlobalObjectTraceHook,
+	//{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 
 };
 
@@ -69,14 +70,16 @@ static JSClass normal_class =
 	"qiucw_n", 0,
 	JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
 	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
-	0,0,0,0,{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	0,0,0,0,
+	//{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 static JSClass class_with_finalizer =
 {
     "qiucw_f", JSCLASS_HAS_PRIVATE,
     JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
 	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, sc_finalize,
-	0,0,0,0,{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	0,0,0,0,
+	//{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 
 int getErroReportLineNo(JSErrorReport* report)
@@ -354,6 +357,29 @@ bool js_print(JSContext *cx, unsigned argc, JS::Value *vp)
     return true;
 }
 
+// Just a wrapper around JSPrincipals that allows static construction.
+class CCJSPrincipals : public JSPrincipals
+{
+public:
+	explicit CCJSPrincipals(int rc = 0)
+		: JSPrincipals()
+	{
+		refcount = rc;
+	}
+};
+
+static CCJSPrincipals shellTrustedPrincipals(1);
+
+static bool
+	CheckObjectAccess(JSContext *cx)
+{
+	return true;
+}
+
+static JSSecurityCallbacks securityCallbacks = {
+	CheckObjectAccess,
+	NULL
+};
 // 
 // 返回0表示没错
 //
@@ -370,6 +396,9 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
 
 	rt = JS_NewRuntime(8 * 1024 * 1024, JS_NO_HELPER_THREADS);
 	JS_SetGCParameter(rt, JSGC_MAX_BYTES, 0xffffffff);
+
+	JS_SetTrustedPrincipals(rt, &shellTrustedPrincipals);
+	JS_SetSecurityCallbacks(rt, &securityCallbacks);
     JS_SetNativeStackQuota(rt, 500000, 0, 0);
 
     cx = JS_NewContext(rt, 8192);
@@ -480,6 +509,7 @@ MOZ_API void gc()
 {
     JS_GC(g_rt);
 }
+
 
 MOZ_API void moveSaveID2Arr( int arrIndex )
 {

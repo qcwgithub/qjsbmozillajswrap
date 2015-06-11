@@ -92,7 +92,7 @@ int* valueArr::makeSureArrHeapObj(int index)
             S *= 2;
 
         // copy data
-        int* _arr = new int[size];
+        int* _arr = new int[S];
         if (index > 0)
         {
             int N = min(oldS - 1, index);
@@ -256,7 +256,7 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
 
     //stHeapValue* p = new stHeapValue(val);
 	stHeapValue p(val);
-	p.mark = mark;
+	p.mark = (char)mark;
 
 	int J = 0;
 	list<int>::iterator itBegin = lstFree.begin();
