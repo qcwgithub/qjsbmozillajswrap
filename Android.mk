@@ -5,8 +5,10 @@ LOCAL_MODULE := libjs_static
 LOCAL_SRC_FILES := $(LOCAL_PATH)/spidermonkey/prebuilt/android/armeabi-v7a/libjs_static.a
 include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES := mozjswrap.cpp
-        
+LOCAL_SRC_FILES := mozjswrap.cpp \
+callstack.cpp \
+storage.cpp
+
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/spidermonkey/include/android
 LOCAL_STATIC_LIBRARIES := libjs_static
