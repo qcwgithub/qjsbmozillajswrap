@@ -9,4 +9,4 @@ mv ./GypAndroid.mk ./Android.mk
 
 sed -i '10a include $(LOCAL_PATH)/prebuilt.mk' Android.mk
 
-ndk-build NDK_MODULE_PATH=. NDK_PROJECT_PATH=.. NDK_DEBUG=0 NDK_LOG=1 V=1 2>&1|tee build.log
+ndk-build NDK_MODULE_PATH=. NDK_PROJECT_PATH=.. NDK_DEBUG=0 NDK_LOG=1 V=1 2>&1|tee build.log 
