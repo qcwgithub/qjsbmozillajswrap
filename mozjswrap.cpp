@@ -393,8 +393,11 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
     {
         return 1;
     }
-
-	rt = JS_NewRuntime(8 * 1024 * 1024, JS_NO_HELPER_THREADS);
+	rt = JS_NewRuntime(8 * 1024 * 1024
+#ifdef SPIDERMONKEY31
+                       , JS_NO_HELPER_THREADS
+#endif
+                       );
 	JS_SetGCParameter(rt, JSGC_MAX_BYTES, 0xffffffff);
 
 	JS_SetTrustedPrincipals(rt, &shellTrustedPrincipals);
@@ -736,8 +739,13 @@ MOZ_API _BOOL evaluate( const char* ascii, size_t length, const char* filename )
 	options.setUTF8(true);
 	options.setFileAndLine(filename, 1);
 
-	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+    JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+#ifdef SPIDERMONKEY31
     JS::RootedScript jsScript(g_cx, JS_CompileScript(g_cx, roGlobal, ascii, length, options));
+#else // V33
+    JS::RootedScript jsScript(g_cx);
+    JS_CompileScript(g_cx, roGlobal, ascii, length, options, &jsScript);
+#endif
     if (jsScript == 0)
     {
         Assert(false, "JS_CompileScript fail");
