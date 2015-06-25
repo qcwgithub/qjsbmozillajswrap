@@ -157,7 +157,7 @@
                         "GCC_INLINES_ARE_PRIVATE_EXTERN":"YES",
 
                         # 'ARCHS': '$(ARCHS_STANDARD_32_BIT)', 
-                        'ARCHS': '$(ARCHS_STANDARD)',
+                        'ARCHS': '$(ARCHS_STANDARD_32_64_BIT)',
                         'CLANG_CXX_LANGUAGE_STANDARD':'c++0x',
 
                         #'OTHER_CFLAGS':['-fobjc-arc'],
