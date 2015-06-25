@@ -30,7 +30,7 @@
                             'TreatWarningAsError': 'false',                                  #将警告视为错误
                             'WarningLevel': 'Level4',                                        #警告等级
                             'ProgramDataBaseFileName': '$(IntDir)vc$(PlatformToolsetVersion).pdb',                            
-                            'PreprocessorDefinitions': ['WIN32','_USING_V110_SDK71_','_WINDOWS'],     #预处理器定义
+                            'PreprocessorDefinitions': ['WIN32','_USING_V110_SDK71_','_WINDOWS','SPIDERMONKEY31'],     #预处理器定义
                             #'ExceptionHandling': '/EHsc',
                         },
                         'Link': {

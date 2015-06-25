@@ -142,6 +142,7 @@
                 {
                     #'default_configuration': 'Release',
                     'include_dirs+':['<(source_path)/spidermonkey/include/mac','<(source_path)/debugger/cocos/apple'],
+                    'defines+':  ['SPIDERMONKEY31'],
 
                     # loadable_module+bundle makes a bundle
                     'type': 'loadable_module', #static_library, shared_library, executable
@@ -170,7 +171,7 @@
                         },],
                     ],
                     #'xcode_config_file': '<(source_path)/debugger/cocos/apple/mozjs.xcconfig',
-                    'libraries+':['<(source_path)/spidermonkey/prebuilt/mac/i386/libjs_static.a', 'libz.dylib'],
+                    'libraries+':['<(source_path)/spidermonkey/prebuilt/mac/universal/libjs_static.a', 'libz.dylib'],
                },],
 
 
