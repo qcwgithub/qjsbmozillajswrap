@@ -5,67 +5,68 @@
 // global variables
 //
 //
-JS::Value* g_vp = 0;
-int g_argc = 0;
-// 当前取到第几个参数了
-int argIndex = 0;
-// 实际几个参数
-int actualArgc = 0;
-
-JS::CallArgs* p_args = 0;
-#define ArgVal(i) (p_args->get(i))
-
 MAPID idFunRet = 0; // callFunctionValue后，往 valueMap 添加后得到的IDI
 MAPID idSave = 0; //往valueMap添加后得到的ID
+
+JSCallStack jsCallStack;
+#define ArgVal(i) (jsCallStack.currStack->args->get(i))
+#define ArgIndex (jsCallStack.currStack->argIndex)
+#define ActualArgc (jsCallStack.currStack->actualArgc)
+#define ArgVp (jsCallStack.currStack->vp)
 
 
 CSEntry csEntry = 0; 
 bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
 {
-    g_vp = vp;
-    g_argc = argc;
+	AJSCallStack aStack;
+	aStack.vp = vp;
+	aStack.argc = argc;
+	
 
 	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-	p_args = &args;
+	aStack.args = &args;
 
-    int op = ArgVal(0).toInt32();
-    int slot = ArgVal(1).toInt32();
-    int index = ArgVal(2).toInt32();
-    bool isStatic = ArgVal(3).toBoolean();
+    int op = args.get(0).toInt32();
+    int slot = args.get(1).toInt32();
+    int index = args.get(2).toInt32();
+    bool isStatic = args.get(3).toBoolean();
 
     //
     // 计算参数个数，不算末尾的 undefined
     //
-    actualArgc = argc;
-    while (actualArgc > 0 && ArgVal(actualArgc - 1).isUndefined())
+    aStack.actualArgc = argc;
+    while (aStack.actualArgc > 0 && args.get(aStack.actualArgc - 1).isUndefined())
     {
-        actualArgc--;
-    }
+        aStack.actualArgc--;
+	}
+	aStack.actualArgc = argc;
+    aStack.argIndex = 4;
 
-    argIndex = 4;
-	bool ret = (_TRUE == csEntry(op, slot, index, (isStatic ? 1 : 0), actualArgc - argIndex));
+	jsCallStack.Push(aStack);
+
+	bool ret = (_TRUE == csEntry(op, slot, index, (isStatic ? 1 : 0), aStack.actualArgc - aStack.argIndex));
 
 	valueMap::_clearTempIDs();
-	p_args = 0;
+	jsCallStack.Pop();
     return ret;
 }
 
 int getArgIndex()
 {
-    return argIndex;
+    return ArgIndex;
 }
 
 void setArgIndex(int i)
 {
-    if (i >= 0 && i < actualArgc)
+    if (i >= 0 && i < ActualArgc)
     {
-        argIndex = i;
+        ArgIndex = i;
     }
 }
 
 MOZ_API int incArgIndex()
 {
-    return argIndex++;
+    return ArgIndex++;
 }
 
 JS::Value getVal(eGetType e, bool bIncIndex)
@@ -74,15 +75,15 @@ JS::Value getVal(eGetType e, bool bIncIndex)
 	{
 	case GetArg:
 		{
-			int i = argIndex;
-			if (bIncIndex) argIndex++;
+			int i = ArgIndex;
+			if (bIncIndex) ArgIndex++;
 			return ArgVal(i);
 		}
 		break;
 	case GetArgRef:
 		{
-			int i = argIndex;
-			if (bIncIndex) argIndex++;
+			int i = ArgIndex;
+			if (bIncIndex) ArgIndex++;
 			JS::RootedValue val(g_cx, ArgVal(i));
 			JS::RootedObject jsObj(g_cx, &val.toObject());
 
@@ -309,12 +310,12 @@ void setVal(eSetType e, JS::HandleValue val)
         }
 		break;
 	case SetRval:
-		JS_SET_RVAL(g_cx, g_vp, val);
+		JS_SET_RVAL(g_cx, ArgVp, val);
 		break;
 	case SetArgRef:
 	default:
 		{
-			int i = argIndex;
+			int i = ArgIndex;
 			JS::RootedValue v(g_cx, ArgVal(i));
 			JS::RootedObject jsObj(g_cx, &v.toObject());
 
@@ -378,6 +379,10 @@ void setVector2(eSetType e, float x, float y)
         val.setDouble(x); JS_SetProperty(g_cx, jsObj, "x", val);
         val.setDouble(y); JS_SetProperty(g_cx, jsObj, "y", val);
 
+		JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, "UnityEngine.Vector2"));
+		val.setString(jsString); 
+		JS_SetProperty(g_cx, jsObj, "_fullname", val);
+
         val.setObject(*jsObj);
         setVal(e, val);
     }
@@ -391,7 +396,11 @@ void setVector3(eSetType e, float x, float y, float z)
 
         val.setDouble(x); JS_SetProperty(g_cx, jsObj, "x", val);
         val.setDouble(y); JS_SetProperty(g_cx, jsObj, "y", val);
-        val.setDouble(z); JS_SetProperty(g_cx, jsObj, "z", val);
+		val.setDouble(z); JS_SetProperty(g_cx, jsObj, "z", val);
+
+		JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, "UnityEngine.Vector3"));
+		val.setString(jsString); 
+		JS_SetProperty(g_cx, jsObj, "_fullname", val);
 
         val.setObject(*jsObj);
         setVal(e, val);

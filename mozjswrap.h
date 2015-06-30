@@ -202,7 +202,45 @@ extern "C"
 
 	MOZ_API int getValueMapSize();
 	MOZ_API int getValueMapIndex();
+
+
 }
+
+
+struct AJSCallStack
+{
+	JS::Value* vp;
+	int argc;
+	int argIndex;
+	int actualArgc;
+	JS::CallArgs* args;
+
+	//	MAPID idFunRet;
+	//	MAPID idSave;
+};
+
+struct JSCallStack
+{
+	AJSCallStack* currStack;
+	std::list<AJSCallStack> lstStack;
+	void Push(AJSCallStack a)
+	{
+		lstStack.push_back(a);
+		currStack = &(*(--lstStack.end()));
+	}
+	void Pop()
+	{
+		Assert(lstStack.size() > 0);
+		lstStack.erase(--lstStack.end());
+
+		if (lstStack.size() > 0)
+			currStack = &(*(--lstStack.end()));
+		else
+			currStack = 0;
+	}
+};
+extern JSCallStack jsCallStack;
+
 
 extern CSEntry csEntry;
 
