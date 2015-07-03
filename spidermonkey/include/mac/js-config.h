@@ -43,5 +43,6 @@
 /* MOZILLA JSAPI version number components */
 #define MOZJS_MAJOR_VERSION 31
 #define MOZJS_MINOR_VERSION 2
+#define JSGC_USE_EXACT_ROOTING
 
 #endif /* js_config_h */
