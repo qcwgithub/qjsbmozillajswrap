@@ -187,7 +187,7 @@ extern "C"
     //MOZ_API bool require(JSContext *cx, int argc, JS::Value *vp);
     /////////////////////////////////////////////////////////////////////
 
-    MOZ_API _BOOL evaluate(const char* ascii, size_t length, const char* filename);
+    MOZ_API _BOOL evaluate(const char* ascii, int length, const char* filename);
     MOZ_API const char* getArgString(jsval* vp, int i);
     MOZ_API void setRvalBool(jsval* vp, _BOOL v);
     MOZ_API MAPID getObjFunction(MAPID id, const char* fname);

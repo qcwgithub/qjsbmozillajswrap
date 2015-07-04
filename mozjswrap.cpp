@@ -732,7 +732,7 @@ MOZ_API void setTempTrace(MAPID id, bool bTempTrace)
     valueMap::setTempTrace(id, bTempTrace);
 }
 
-MOZ_API _BOOL evaluate( const char* ascii, size_t length, const char* filename )
+MOZ_API _BOOL evaluate( const char* ascii, int length, const char* filename )
 {
 	JS::CompileOptions options(g_cx);
 	options.setVersion(JSVERSION_LATEST);
@@ -759,10 +759,7 @@ MOZ_API _BOOL evaluate( const char* ascii, size_t length, const char* filename )
         return _FALSE;
     }
 
-    // val 不需要
-
     // TODO add script root
-    // 需要吗？好像不需要吧
     //JS_AddNamedScriptRoot(g_cx, &jsScript, filename);
 
     return _TRUE;
