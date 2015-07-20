@@ -384,32 +384,40 @@ static JSSecurityCallbacks securityCallbacks = {
 // 返回0表示没错
 //
 JSCompartment* oldCompartment = 0;
+JSErrorReporter oldErrorReporter = 0;
+bool g_firstInit = true;
 MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected)
 {
     JSRuntime*& rt = g_rt;
     JSContext*& cx = g_cx;
 
-    if (!JS_Init())
-    {
-        return 1;
-    }
-	rt = JS_NewRuntime(8 * 1024 * 1024
+	if (g_firstInit)
+	{
+		g_firstInit = false;
+
+		if (!JS_Init())
+		{
+			return 1;
+		}
+
+		rt = JS_NewRuntime(8 * 1024 * 1024
 #ifdef SPIDERMONKEY31
-                       , JS_NO_HELPER_THREADS
+			, JS_NO_HELPER_THREADS
 #endif
-                       );
-	JS_SetGCParameter(rt, JSGC_MAX_BYTES, 0xffffffff);
+			);
+		JS_SetGCParameter(rt, JSGC_MAX_BYTES, 0xffffffff);
 
-	JS_SetTrustedPrincipals(rt, &shellTrustedPrincipals);
-	JS_SetSecurityCallbacks(rt, &securityCallbacks);
-    JS_SetNativeStackQuota(rt, 500000, 0, 0);
+		JS_SetTrustedPrincipals(rt, &shellTrustedPrincipals);
+		JS_SetSecurityCallbacks(rt, &securityCallbacks);
+		JS_SetNativeStackQuota(rt, 500000, 0, 0);
 
-    cx = JS_NewContext(rt, 8192);
-	JS::RuntimeOptionsRef(rt).setIon(true);
-	JS::RuntimeOptionsRef(rt).setBaseline(true);
+		cx = JS_NewContext(rt, 8192);
+		JS::RuntimeOptionsRef(rt).setIon(true);
+		JS::RuntimeOptionsRef(rt).setBaseline(true);
+	}
 
-    // Set error reporter
-    JS_SetErrorReporter(cx, er);
+	// Set error reporter
+	oldErrorReporter = JS_SetErrorReporter(cx, er);
 
     JS::CompartmentOptions options;
 	//options.setVersion(JSVERSION_LATEST);
@@ -435,36 +443,45 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
 
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
     shutingDown = false;
-
     return 0;
 }
 
-MOZ_API void ShutdownJSEngine()
+MOZ_API void ShutdownJSEngine(_BOOL bCleanup)
 {
-    shutingDown = true;
-	if (ppCSObj)
+	// Reset
 	{
-		JS::RemoveObjectRoot(g_cx, ppCSObj);
-		delete ppCSObj;
-		ppCSObj = 0;
+		shutingDown = true;
+		if (ppCSObj)
+		{
+			JS::RemoveObjectRoot(g_cx, ppCSObj);
+			delete ppCSObj;
+			ppCSObj = 0;
+		}
+		idErrorEntry = 0;
+
+		//JS_SetErrorReporter(g_cx, oldErrorReporter);
+
+		JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
+		idFunRet = 0;
+		idSave = 0;
+		valueMap::clear();
+		valueArr::clear(false);
+
+		JS_LeaveCompartment(g_cx, oldCompartment);
+		g_global.destroy();
+
+		JS_GC(g_rt);
 	}
-	idErrorEntry = 0;
 
-    JS_RemoveExtraGCRootsTracer(g_rt, myJSTraceDataOp, 0);
-    idFunRet = 0;
-    idSave = 0;
-    valueMap::clear();
-    valueArr::clear(false);
+	if (bCleanup == _TRUE)
+	{
+		JS_DestroyContext(g_cx);
+		JS_DestroyRuntime(g_rt);
+		JS_ShutDown();
 
-	JS_LeaveCompartment(g_cx, oldCompartment);
-
-	JS_DestroyContext(g_cx);
-	JS_DestroyRuntime(g_rt);
-	JS_ShutDown();
-
-    g_cx = 0;
-	g_rt = 0;
-	g_global.destroy();
+		g_cx = 0;
+		g_rt = 0;
+	}
 }
 
 MOZ_API void setProperty( MAPID id, const char* name, MAPID valueID )
