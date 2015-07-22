@@ -99,7 +99,7 @@ const char* getErroReportFileName(JSErrorReport* report)
 // debugger api
 void enableDebugger(const char** src_searchpath, int nums, int port){
 
-	jsdebugger::getInstance()->Start(g_cx, g_global, &global_class, src_searchpath, nums, port);
+	jsdebugger::getInstance()->Start(g_cx, g_global.ref().get(), &global_class, src_searchpath, nums, port);
 
 }
 

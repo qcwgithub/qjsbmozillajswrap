@@ -290,13 +290,13 @@ static bool NS_ProcessNextEvent()
 
 void jsdebugger::debugProcessInput(const std::string& str)
 {
-	JSAutoCompartment ac(_cx, _debugGlobal);
-
-	JSString* jsstr = JS_NewStringCopyZ(_cx, str.c_str());
-	jsval argv = STRING_TO_JSVAL(jsstr);
-	jsval outval;
-
-	JS_CallFunctionName(_cx, _debugGlobal, "processInput", 1, &argv, &outval);
+	JSAutoCompartment ac(_cx, _debugGlobal.ref());
+    
+    JSString* jsstr = JS_NewStringCopyZ(_cx, str.c_str());
+    jsval argv = STRING_TO_JSVAL(jsstr);
+    JS::RootedValue outval(_cx);
+    
+    JS_CallFunctionName(_cx, JS::RootedObject(_cx, _debugGlobal.ref()), "processInput", JS::HandleValueArray::fromMarkedLocation(1, &argv), &outval);
 }
 
 bool JSBDebug_BufferWrite(JSContext* cx, unsigned argc, jsval* vp)
@@ -313,76 +313,85 @@ bool JSBDebug_BufferWrite(JSContext* cx, unsigned argc, jsval* vp)
 
 bool JSBDebug_enterNestedEventLoop(JSContext* cx, unsigned argc, jsval* vp)
 {
-	enum {
-		NS_OK = 0,
-		NS_ERROR_UNEXPECTED
-	};
-
+    enum {
+        NS_OK = 0,
+        NS_ERROR_UNEXPECTED
+    };
+    
 #define NS_SUCCEEDED(v) ((v) == NS_OK)
+    
+    int rv = NS_OK;
+    
+    uint32_t nestLevel = ++s_nestedLoopLevel;
 
-	int rv = NS_OK;
-
-	uint32_t nestLevel = ++s_nestedLoopLevel;
-
-	while (NS_SUCCEEDED(rv) && s_nestedLoopLevel >= nestLevel) {
-		if (!NS_ProcessNextEvent())
-			rv = NS_ERROR_UNEXPECTED;
-	}
-
-	CCASSERT(s_nestedLoopLevel <= nestLevel,
-		"nested event didn't unwind properly");
-
-	JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(s_nestedLoopLevel));
-	return true;
+    while (NS_SUCCEEDED(rv) && s_nestedLoopLevel >= nestLevel) {
+        if (!NS_ProcessNextEvent())
+            rv = NS_ERROR_UNEXPECTED;
+    }
+    
+    CCASSERT(s_nestedLoopLevel <= nestLevel,
+             "nested event didn't unwind properly");
+    
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    args.rval().set(UINT_TO_JSVAL(s_nestedLoopLevel));
+//    JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(s_nestedLoopLevel));
+    return true;
 }
 
 bool JSBDebug_exitNestedEventLoop(JSContext* cx, unsigned argc, jsval* vp)
 {
-	if (s_nestedLoopLevel > 0) {
-		--s_nestedLoopLevel;
-	}
-	else {
-		JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(0));
-		return true;
-	}
-
-	JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(s_nestedLoopLevel));
-	return true;
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    if (s_nestedLoopLevel > 0) {
+        --s_nestedLoopLevel;
+    } else {
+        args.rval().set(UINT_TO_JSVAL(0));
+//        JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(0));
+        return true;
+    }
+    args.rval().setUndefined();
+//    JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(s_nestedLoopLevel));
+    return true;
 }
 
 bool JSBDebug_getEventLoopNestLevel(JSContext* cx, unsigned argc, jsval* vp)
 {
-	JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(s_nestedLoopLevel));
-	return true;
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    args.rval().set(UINT_TO_JSVAL(s_nestedLoopLevel));
+//    JS_SET_RVAL(cx, vp, UINT_TO_JSVAL(s_nestedLoopLevel));
+    return true;
 }
 
 void jsdebugger::enableDebugger(unsigned int port /*= 5086*/)
 {
-	if (_debugGlobal == NULL)
+	if (_debugGlobal.empty())
 	{
-		JSAutoCompartment ac0(_cx, _global);
+        JSAutoCompartment ac0(_cx, _global.ref().get());
 
 		JS_SetDebugMode(_cx, true);
 
-		_debugGlobal = NewGlobalObject(_cx, true);
+        _debugGlobal.construct(_cx);
+		_debugGlobal.ref() = NewGlobalObject(_cx, true);
 		// Adds the debugger object to root, otherwise it may be collected by GC.
-		JS_AddObjectRoot(_cx, &_debugGlobal);
-		JS::RootedObject rootedDebugObj(_cx, _debugGlobal);
-		JS_WrapObject(_cx, &rootedDebugObj);
-		JSAutoCompartment ac(_cx, _debugGlobal);
+        //AddObjectRoot(_cx, &_debugGlobal.ref()); no need, it's persistent rooted now
+        //JS_WrapObject(_cx, &_debugGlobal.ref()); Not really needed, JS_WrapObject makes a cross-compartment wrapper for the given JS object
+        JS::RootedObject rootedDebugObj(_cx, _debugGlobal.ref().get());
+		
+		JSAutoCompartment ac(_cx, rootedDebugObj);
 		// these are used in the debug program
-		JS_DefineFunction(_cx, _debugGlobal, "log", jsdebugger::log, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, _debugGlobal, "_bufferWrite", JSBDebug_BufferWrite, 1, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, _debugGlobal, "_enterNestedEventLoop", JSBDebug_enterNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, _debugGlobal, "_exitNestedEventLoop", JSBDebug_exitNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, _debugGlobal, "_getEventLoopNestLevel", JSBDebug_getEventLoopNestLevel, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+		JS_DefineFunction(_cx, rootedDebugObj, "log", jsdebugger::log, 0, JSPROP_READONLY | JSPROP_ENUMERATE | JSPROP_PERMANENT);
+		JS_DefineFunction(_cx, rootedDebugObj, "_bufferWrite", JSBDebug_BufferWrite, 1, JSPROP_READONLY | JSPROP_PERMANENT);
+		JS_DefineFunction(_cx, rootedDebugObj, "_enterNestedEventLoop", JSBDebug_enterNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+		JS_DefineFunction(_cx, rootedDebugObj, "_exitNestedEventLoop", JSBDebug_exitNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+		JS_DefineFunction(_cx, rootedDebugObj, "_getEventLoopNestLevel", JSBDebug_getEventLoopNestLevel, 0, JSPROP_READONLY | JSPROP_PERMANENT);
 
-		runScript("debug/jsb_debugger.javascript", _debugGlobal);
+		runScript("debug/jsb_debugger.javascript", rootedDebugObj);
 
+        JS::RootedObject globalObj(_cx, _global.ref().get());
+        JS_WrapObject(_cx, &globalObj);
 		// prepare the debugger
-		jsval argv = OBJECT_TO_JSVAL(_global);
-		jsval outval;
-		bool ok = JS_CallFunctionName(_cx, _debugGlobal, "_prepareDebugger", 1, &argv, &outval);
+		jsval argv = OBJECT_TO_JSVAL(globalObj);
+		JS::RootedValue outval(_cx);
+		bool ok = JS_CallFunctionName(_cx, rootedDebugObj, "_prepareDebugger", JS::HandleValueArray::fromMarkedLocation(1, &argv), &outval);
 		if (!ok) {
 			JS_ReportPendingException(_cx);
 		}
@@ -578,16 +587,19 @@ void jsdebugger::update(float dt)
 
 bool jsdebugger::executeScript(JSContext *cx, uint32_t argc, jsval *vp)
 {
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 	if (argc >= 1) {
-		jsval* argv = JS_ARGV(cx, vp);
-		JSString* str = JS::ToString(cx, JS::RootedValue(cx, argv[0]));
-		JSStringWrapper path(str);
-		bool res = false;
-		if (argc == 2 && argv[1].isString()) {
-			JSString* globalName = JSVAL_TO_STRING(argv[1]);
-			JSStringWrapper name(globalName);
-			//            JS::RootedObject* rootedGlobal = globals[name];
-			JSObject* debugObj = jsdebugger::getInstance()->getDebugGlobal();
+        JSString* str = JS::ToString(cx, JS::RootedValue(cx, args.get(0)));
+        JSStringWrapper path(str);
+
+        printf("!REQUIRE %s\n", path.get());
+
+        bool res = false;
+        if (argc == 2 && args.get(1).isString()) {
+            JSString* globalName = args.get(1).toString();
+            JSStringWrapper name(globalName);
+
+            JS::RootedObject debugObj(cx, jsdebugger::getInstance()->getDebugGlobal());
 			if (debugObj) {
 				res = jsdebugger::getInstance()->runScript(path.get(), debugObj);
 			}
@@ -597,12 +609,13 @@ bool jsdebugger::executeScript(JSContext *cx, uint32_t argc, jsval *vp)
 			}
 		}
 		else {
-			JSObject* glob = JS::CurrentGlobalOrNull(cx);
+            JS::RootedObject glob(cx, JS::CurrentGlobalOrNull(cx));
 			res = jsdebugger::getInstance()->runScript(path.get(), glob);
 		}
 		return res;
 	}
-	return true;
+    args.rval().setUndefined();
+    return true;
 }
 
 bool jsdebugger::forceGC(JSContext *cx, uint32_t argc, jsval *vp)
@@ -748,27 +761,32 @@ bool JSB_core_restartVM(JSContext *cx, uint32_t argc, jsval *vp)
 	return false;
 };
 
-void registerDefaultClasses(JSContext* cx, JSObject* global) {
+void registerDefaultClasses(JSContext* cx,JS::HandleObject global) {
 	// first, try to get the ns
-	JS::RootedValue nsval(cx);
-	JS::RootedObject ns(cx);
-	JS_GetProperty(cx, global, "cc", &nsval);
-	if (nsval == JSVAL_VOID) {
-		ns = JS_NewObject(cx, NULL, NULL, NULL);
-		nsval = OBJECT_TO_JSVAL(ns);
-		JS_SetProperty(cx, global, "cc", nsval);
-	}
-	else {
-		JS_ValueToObject(cx, nsval, &ns);
-	}
+    JS::RootedValue nsval(cx);
+    JS::RootedObject ns(cx);
+    JS_GetProperty(cx, global, "cc", &nsval);
+    // Not exist, create it
+    if (nsval == JSVAL_VOID)
+    {
+        ns.set(JS_NewObject(cx, NULL, JS::NullPtr(), JS::NullPtr()));
+        nsval = OBJECT_TO_JSVAL(ns);
+        JS_SetProperty(cx, global, "cc", nsval);
+    }
+    else
+    {
+        ns.set(nsval.toObjectOrNull());
+    }
 
-	//
-	// Javascript controller (__jsc__)
-	//
-	JSObject *jsc = JS_NewObject(cx, NULL, NULL, NULL);
-	JS::RootedValue jscVal(cx);
-	jscVal = OBJECT_TO_JSVAL(jsc);
-	JS_SetProperty(cx, global, "__jsc__", jscVal);
+    //
+    // Javascript controller (__jsc__)
+    //
+    JS::RootedObject proto(cx);
+    JS::RootedObject parent(cx);
+    JS::RootedObject jsc(cx, JS_NewObject(cx, NULL, proto, parent));
+    JS::RootedValue jscVal(cx);
+    jscVal = OBJECT_TO_JSVAL(jsc);
+    JS_SetProperty(cx, global, "__jsc__", jscVal);
 
 	JS_DefineFunction(cx, jsc, "garbageCollect", jsdebugger::forceGC, 0, JSPROP_READONLY | JSPROP_PERMANENT | JSPROP_ENUMERATE);
 	JS_DefineFunction(cx, jsc, "dumpRoot", jsdebugger::dumpRoot, 0, JSPROP_READONLY | JSPROP_PERMANENT | JSPROP_ENUMERATE);
@@ -786,30 +804,26 @@ void registerDefaultClasses(JSContext* cx, JSObject* global) {
 	JS_DefineFunction(cx, global, "__getOS", JSBCore_os, 0, JSPROP_READONLY | JSPROP_PERMANENT);
 	JS_DefineFunction(cx, global, "__getVersion", JSBCore_version, 0, JSPROP_READONLY | JSPROP_PERMANENT);
 	JS_DefineFunction(cx, global, "__restartVM", JSB_core_restartVM, 0, JSPROP_READONLY | JSPROP_PERMANENT | JSPROP_ENUMERATE);
+    JS_DefineFunction(cx, global, "__cleanScript", JSB_cleanScript, 1, JSPROP_READONLY | JSPROP_PERMANENT);
+    JS_DefineFunction(cx, global, "__isObjectValid", ScriptingCore::isObjectValid, 1, JSPROP_READONLY | JSPROP_PERMANENT);
 }
 
-void registerCocos2dClasses(JSContext* cx, JSObject* obj){
-
-	JS::RootedValue nsval(cx);
-	JS::RootedObject ns(cx);
-	JS_GetProperty(cx, obj, "jsb", &nsval);
-	if (nsval == JSVAL_VOID) {
-		ns = JS_NewObject(cx, NULL, NULL, NULL);
-		nsval = OBJECT_TO_JSVAL(ns);
-		JS_SetProperty(cx, obj, "jsb", nsval);
-	}
-	else {
-		JS_ValueToObject(cx, nsval, &ns);
-	}
-	obj = ns;
-	js_register_cocos2dx_FileUtils(cx, obj);
-
-
+void registerCocos2dClasses(JSContext* cx, JS::HandleObject obj, const std::string &name, JS::MutableHandleObject jsObj)
+{
+    JS::RootedValue nsval(cx);
+    JS_GetProperty(cx, obj, name.c_str(), &nsval);
+    if (nsval == JSVAL_VOID) {
+        jsObj.set(JS_NewObject(cx, NULL, JS::NullPtr(), JS::NullPtr()));
+        nsval = OBJECT_TO_JSVAL(jsObj);
+        JS_SetProperty(cx, obj, name.c_str(), nsval);
+    } else {
+        jsObj.set(nsval.toObjectOrNull());
+    }
 }
 
 jsdebugger* jsdebugger::pInstance = NULL;
 
-void jsdebugger::Start(JSContext* cx, JSObject* global, JSClass* gclass, const char** src_searchpath, int nums, int port)
+void jsdebugger::Start(JSContext* cx, JS::HandleObject global, JSClass* gclass, const char** src_searchpath, int nums, int port)
 {
 	std::vector<std::string> paths;
 	for (int i = 0; i < nums; i++)
@@ -821,7 +835,10 @@ void jsdebugger::Start(JSContext* cx, JSObject* global, JSClass* gclass, const c
 	_global = global;
 	_gclass = gclass;
 	registerDefaultClasses(cx, global);
-	registerCocos2dClasses(cx, global);
+
+    JS::RootedObject jsbObj(cx);
+    registerCocos2dClasses(cx, global, "jsb", &jsbObj);
+	js_register_cocos2dx_FileUtils(cx, global);
 	enableDebugger(port);
 }
 
