@@ -339,23 +339,21 @@ void myJSTraceDataOp(JSTracer *trc, void *data)
     valueMap::trace(trc);
 }
 
-bool js_print(JSContext *cx, unsigned argc, JS::Value *vp)
-{
-// #define GARG(i) (JS_ARGV(cx, vp)[(i)])
-//     JS::Value& val = GARG(0);
-	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
-    if (args.get(0).isString())
-    {
-        JS::RootedString jsStr(cx, args.get(0).toString());
-        const char* _buffer = JS_EncodeStringToUTF8(cx, jsStr);
-        if (_buffer)
-        {
-            printf("C: %s\n", _buffer);
-            JS_free(cx, (void*)_buffer);
-        }
-    }
-    return true;
-}
+// bool js_print(JSContext *cx, unsigned argc, JS::Value *vp)
+// {
+// 	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+//     if (args.get(0).isString())
+//     {
+//         JS::RootedString jsStr(cx, args.get(0).toString());
+//         const char* _buffer = JS_EncodeStringToUTF8(cx, jsStr);
+//         if (_buffer)
+//         {
+//             printf("C: %s\n", _buffer);
+//             JS_free(cx, (void*)_buffer);
+//         }
+//     }
+//     return true;
+// }
 
 // Just a wrapper around JSPrincipals that allows static construction.
 class CCJSPrincipals : public JSPrincipals
@@ -386,7 +384,11 @@ static JSSecurityCallbacks securityCallbacks = {
 JSCompartment* oldCompartment = 0;
 JSErrorReporter oldErrorReporter = 0;
 bool g_firstInit = true;
-MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected)
+MOZ_API int InitJSEngine(JSErrorReporter er, 
+                         CSEntry entry, 
+                         JSNative req, 
+                         OnObjCollected onObjCollected, 
+                         JSNative print)
 {
     JSRuntime*& rt = g_rt;
     JSContext*& cx = g_cx;
@@ -439,7 +441,7 @@ MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjC
 
 	//ppCSObj = 0;
     registerCS(req);
-    JS_DefineFunction(cx, roGlobal, "print", js_print, 0/* narg */, 0);
+    JS_DefineFunction(cx, roGlobal, "print", print, 0/* narg */, 0);
 
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
     shutingDown = false;

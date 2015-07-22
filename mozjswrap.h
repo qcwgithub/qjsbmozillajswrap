@@ -192,7 +192,7 @@ extern "C"
     MOZ_API void setRvalBool(jsval* vp, _BOOL v);
     MOZ_API MAPID getObjFunction(MAPID id, const char* fname);
 
-    MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected);
+    MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected, JSNative print);
     MOZ_API _BOOL initErrorHandler();
     MOZ_API void ShutdownJSEngine(_BOOL bCleanup);
     JSObject* _createJSClassObject(char* name);
