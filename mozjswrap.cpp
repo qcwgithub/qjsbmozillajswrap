@@ -65,6 +65,16 @@ static JSClass global_class =
 
 };
 
+static JSClass debug_global_class =
+{
+	"global", JSCLASS_GLOBAL_FLAGS,
+	JS_PropertyStub, JS_DeletePropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
+	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, NULL,
+	0,0,0,JS_GlobalObjectTraceHook,
+	//{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
+};
+
 static JSClass normal_class =
 {
 	"qiucw_n", 0,
@@ -98,8 +108,7 @@ const char* getErroReportFileName(JSErrorReport* report)
 ////////////////////////////////////////////////////////////////////////////////////
 // debugger api
 void enableDebugger(const char** src_searchpath, int nums, int port){
-
-	jsdebugger::getInstance()->Start(g_cx, g_global.ref().get(), &global_class, src_searchpath, nums, port);
+	jsdebugger::getInstance()->Start(g_cx, &debug_global_class, src_searchpath, nums, port);
 
 }
 
@@ -111,23 +120,23 @@ void cleanupDebugger(){
 	jsdebugger::Clean();
 }
 
-bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file)
-{
-	return jsdebugger::getInstance()->runScript(script_file, global, cx);
-}
-
-void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file)
-{
-	return jsdebugger::getInstance()->compileScript(script_file, global, cx);
-}
+// bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file)
+// {
+// 	return jsdebugger::getInstance()->runScript(script_file, global, cx);
+// }
+// 
+// void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file)
+// {
+// 	return jsdebugger::getInstance()->compileScript(script_file, global, cx);
+// }
 #else
 ////////////////////////////////////////////////////////////////////////////////////
 // debugger api
 void enableDebugger(const char** src_searchpath, int nums, int port) {}
 void updateDebugger() {}
 void cleanupDebugger() {}
-bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file) { return false;}
-void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file) {}
+// bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file) { return false;}
+// void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file) {}
 //MOZ_API void JSh_DumpBacktrace( JSContext* cx ) {}
 #endif
 

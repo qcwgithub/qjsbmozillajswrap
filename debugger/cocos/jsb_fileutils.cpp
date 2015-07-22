@@ -530,6 +530,7 @@ bool js_cocos2dx_FileUtils_isDirectoryExist(JSContext *cx, uint32_t argc, jsval 
     JS_ReportError(cx, "js_cocos2dx_FileUtils_isDirectoryExist : wrong number of arguments: %d, was expecting %d", argc, 1);
     return false;
 }
+/*
 bool js_cocos2dx_FileUtils_setDefaultResourceRootPath(JSContext *cx, uint32_t argc, jsval *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
@@ -550,6 +551,7 @@ bool js_cocos2dx_FileUtils_setDefaultResourceRootPath(JSContext *cx, uint32_t ar
     JS_ReportError(cx, "js_cocos2dx_FileUtils_setDefaultResourceRootPath : wrong number of arguments: %d, was expecting %d", argc, 1);
     return false;
 }
+*/
 bool js_cocos2dx_FileUtils_getSearchResolutionsOrder(JSContext *cx, uint32_t argc, jsval *vp)
 {
     JS::CallArgs args = JS::CallArgsFromVp(argc, vp);

@@ -86,6 +86,8 @@ static std::unordered_map<std::string, JSScript*> filename_script;
 // name ~> globals
 //static std::unordered_map<std::string, JS::RootedObject*> globals;
 
+mozilla::Maybe<JS::PersistentRootedObject> _debugGlobal;
+
 static void cc_closesocket(int fd)
 {
 #if (TARGET_PLATFORM == PLATFORM_WIN32)
@@ -139,7 +141,7 @@ static void clearBuffers() {
 
 jsdebugger::~jsdebugger()
 {
-	cleanup();
+	// cleanup();
 }
 
 //extern JSClass global_class;
@@ -302,8 +304,8 @@ void jsdebugger::debugProcessInput(const std::string& str)
 bool JSBDebug_BufferWrite(JSContext* cx, unsigned argc, jsval* vp)
 {
 	if (argc == 1) {
-		jsval* argv = JS_ARGV(cx, vp);
-		JSStringWrapper strWrapper(argv[0]);
+		JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+		JSStringWrapper strWrapper(args.get(0));
 		// this is safe because we're already inside a lock (from clearBuffers)
 		outData.append(strWrapper.get());
 		_clientSocketWriteAndClearString(outData);
@@ -365,7 +367,7 @@ void jsdebugger::enableDebugger(unsigned int port /*= 5086*/)
 {
 	if (_debugGlobal.empty())
 	{
-        JSAutoCompartment ac0(_cx, _global.ref().get());
+        JSAutoCompartment ac0(_cx, g_global.ref().get());
 
 		JS_SetDebugMode(_cx, true);
 
@@ -386,8 +388,9 @@ void jsdebugger::enableDebugger(unsigned int port /*= 5086*/)
 
 		runScript("debug/jsb_debugger.javascript", rootedDebugObj);
 
-        JS::RootedObject globalObj(_cx, _global.ref().get());
+        JS::RootedObject globalObj(_cx, g_global.ref().get());
         JS_WrapObject(_cx, &globalObj);
+
 		// prepare the debugger
 		jsval argv = OBJECT_TO_JSVAL(globalObj);
 		JS::RootedValue outval(_cx);
@@ -415,33 +418,40 @@ void jsdebugger::enableDebugger(unsigned int port /*= 5086*/)
 
 bool jsdebugger::log(JSContext* cx, uint32_t argc, jsval *vp)
 {
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 	if (argc > 0) {
-		JSString *string = NULL;
-		JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "S", &string);
+		JSString *string = JS::ToString(cx, args.get(0));
 		if (string) {
 			JSStringWrapper wrapper(string);
 			js_log("%s", wrapper.get());
 		}
 	}
+	args.rval().setUndefined();
 	return true;
 }
 
 
-bool jsdebugger::runScript(const char *path, JSObject* global, JSContext* cx)
+bool jsdebugger::runScript(const char *path, JS::HandleObject global, JSContext* cx)
 {
-	if (global == NULL) {
-		global = _global;
-	}
+// 	if (global == NULL) {
+// 		global = g_global.ref().get();
+// 	}
+	
 	if (cx == NULL) {
 		cx = _cx;
 	}
-	compileScript(path, global, cx);
-	JSScript * script = getScript(path);
+	JS::RootedObject stackGlobal(cx, global);
+	if (stackGlobal == NULL)
+	{
+		stackGlobal = g_global.ref().get();
+	}
+	compileScript(path, stackGlobal, cx);
+	JS::RootedScript script(cx, getScript(path));
 	bool evaluatedOK = false;
 	if (script) {
-		jsval rval;
-		JSAutoCompartment ac(cx, global);
-		evaluatedOK = JS_ExecuteScript(cx, global, script, &rval);
+		JS::RootedValue rval(cx);
+		JSAutoCompartment ac(cx, stackGlobal);
+		evaluatedOK = JS_ExecuteScript(cx, stackGlobal, script, &rval);
 		if (false == evaluatedOK) {
 			//cocos2d::log("(evaluatedOK == JS_FALSE)");
 			JS_ReportPendingException(cx);
@@ -497,7 +507,7 @@ void jsdebugger::compileScript(const char *path, JSObject* global, JSContext* cx
 	FileUtils *futil = FileUtils::getInstance();
 
 	if (global == NULL) {
-		global = _global;
+		global = g_global.ref().get();
 	}
 	if (cx == NULL) {
 		cx = _cx;
@@ -517,7 +527,7 @@ void jsdebugger::compileScript(const char *path, JSObject* global, JSContext* cx
 		Data data = futil->getDataFromFile(byteCodePath);
 		if (!data.isNull())
 		{
-			script = JS_DecodeScript(cx, data.getBytes(), static_cast<uint32_t>(data.getSize()), nullptr, nullptr);
+			script = JS_DecodeScript(cx, data.getBytes(), static_cast<uint32_t>(data.getSize()), NULL);
 		}
 	}
 
@@ -563,6 +573,26 @@ void jsdebugger::cleanScript(const char *path)
 	if (it != filename_script.end())
 	{
 		filename_script.erase(it);
+	}
+}
+
+bool jsdebugger::isObjectValid(JSContext *cx, uint32_t argc, jsval *vp)
+{
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+	if (argc == 1) {
+		JS::RootedObject tmpObj(cx, args.get(0).toObjectOrNull());
+		js_proxy_t *proxy = jsb_get_js_proxy(tmpObj);
+		if (proxy && proxy->ptr) {
+			args.rval().set(JSVAL_TRUE);
+		}
+		else {
+			args.rval().set(JSVAL_FALSE);
+		}
+		return true;
+	}
+	else {
+		JS_ReportError(cx, "Invalid number of arguments: %d. Expecting: 1", argc);
+		return false;
 	}
 }
 
@@ -641,12 +671,12 @@ bool jsdebugger::dumpRoot(JSContext *cx, uint32_t argc, jsval *vp)
 bool jsdebugger::addRootJS(JSContext *cx, uint32_t argc, jsval *vp)
 {
 	if (argc == 1) {
-		JSObject *o = NULL;
-		if (JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "o", &o) == true) {
-			if (JS_AddNamedObjectRoot(cx, &o, "from-js") == false) {
-				LOGD("something went wrong when setting an object to the root");
-			}
+		JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+		JS::Heap<JSObject*> o(args.get(0).toObjectOrNull());
+		if (AddNamedObjectRoot(cx, &o, "from-js") == false) {
+			LOGD("something went wrong when setting an object to the root");
 		}
+
 		return true;
 	}
 	return false;
@@ -655,9 +685,10 @@ bool jsdebugger::addRootJS(JSContext *cx, uint32_t argc, jsval *vp)
 bool jsdebugger::removeRootJS(JSContext *cx, uint32_t argc, jsval *vp)
 {
 	if (argc == 1) {
-		JSObject *o = NULL;
-		if (JS_ConvertArguments(cx, argc, JS_ARGV(cx, vp), "o", &o) == true) {
-			JS_RemoveObjectRoot(cx, &o);
+		JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+		JS::Heap<JSObject*> o(args.get(0).toObjectOrNull());
+		if (o != nullptr) {
+			RemoveObjectRoot(cx, &o);
 		}
 		return true;
 	}
@@ -689,9 +720,8 @@ bool JSBCore_platform(JSContext *cx, uint32_t argc, jsval *vp)
 	//platform = Application::getInstance()->getTargetPlatform();
 	// #endif
 
-	jsval ret = INT_TO_JSVAL((int)1);
-
-	JS_SET_RVAL(cx, vp, ret);
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+	args.rval().set(INT_TO_JSVAL((int)1));
 
 	return true;
 };
@@ -704,12 +734,12 @@ bool JSBCore_version(JSContext *cx, uint32_t argc, jsval *vp)
 		return false;
 	}
 
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 	char version[256];
 	snprintf(version, sizeof(version) - 1, "%s", "unity-jsb-1.0");
 	JSString * js_version = JS_InternString(cx, version);
 
-	jsval ret = STRING_TO_JSVAL(js_version);
-	JS_SET_RVAL(cx, vp, ret);
+	args.rval().set(STRING_TO_JSVAL(js_version));
 
 	return true;
 };
@@ -722,6 +752,7 @@ bool JSBCore_os(JSContext *cx, uint32_t argc, jsval *vp)
 		return false;
 	}
 
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 	JSString * os;
 
 	// osx, ios, android, windows, linux, etc..
@@ -745,8 +776,26 @@ bool JSBCore_os(JSContext *cx, uint32_t argc, jsval *vp)
 	os = JS_InternString(cx, "Unknown");
 #endif
 
-	jsval ret = STRING_TO_JSVAL(os);
-	JS_SET_RVAL(cx, vp, ret);
+	args.rval().set(STRING_TO_JSVAL(os));
+
+	return true;
+};
+
+bool JSB_cleanScript(JSContext *cx, uint32_t argc, jsval *vp)
+{
+	if (argc != 1)
+	{
+		JS_ReportError(cx, "Invalid number of arguments in JSB_cleanScript");
+		return false;
+	}
+
+	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+	JSString *jsPath = args.get(0).toString();
+	JSB_PRECONDITION2(jsPath, cx, false, "Error js file in clean script");
+	JSStringWrapper wrapper(jsPath);
+	jsdebugger::getInstance()->cleanScript(wrapper.get());
+
+	args.rval().setUndefined();
 
 	return true;
 };
@@ -805,7 +854,7 @@ void registerDefaultClasses(JSContext* cx,JS::HandleObject global) {
 	JS_DefineFunction(cx, global, "__getVersion", JSBCore_version, 0, JSPROP_READONLY | JSPROP_PERMANENT);
 	JS_DefineFunction(cx, global, "__restartVM", JSB_core_restartVM, 0, JSPROP_READONLY | JSPROP_PERMANENT | JSPROP_ENUMERATE);
     JS_DefineFunction(cx, global, "__cleanScript", JSB_cleanScript, 1, JSPROP_READONLY | JSPROP_PERMANENT);
-    JS_DefineFunction(cx, global, "__isObjectValid", ScriptingCore::isObjectValid, 1, JSPROP_READONLY | JSPROP_PERMANENT);
+    JS_DefineFunction(cx, global, "__isObjectValid", jsdebugger::isObjectValid, 1, JSPROP_READONLY | JSPROP_PERMANENT);
 }
 
 void registerCocos2dClasses(JSContext* cx, JS::HandleObject obj, const std::string &name, JS::MutableHandleObject jsObj)
@@ -821,9 +870,9 @@ void registerCocos2dClasses(JSContext* cx, JS::HandleObject obj, const std::stri
     }
 }
 
-jsdebugger* jsdebugger::pInstance = NULL;
+jsdebugger* jsdebugger::spInstance = NULL;
 
-void jsdebugger::Start(JSContext* cx, JS::HandleObject global, JSClass* gclass, const char** src_searchpath, int nums, int port)
+void jsdebugger::Start(JSContext* cx, JSClass* gclass, const char** src_searchpath, int nums, int port)
 {
 	std::vector<std::string> paths;
 	for (int i = 0; i < nums; i++)
@@ -832,13 +881,12 @@ void jsdebugger::Start(JSContext* cx, JS::HandleObject global, JSClass* gclass, 
 	}
 	FileUtils::getInstance()->setSearchPaths(paths);
 	_cx = cx;
-	_global = global;
 	_gclass = gclass;
-	registerDefaultClasses(cx, global);
+	registerDefaultClasses(cx, g_global.ref());
 
     JS::RootedObject jsbObj(cx);
-    registerCocos2dClasses(cx, global, "jsb", &jsbObj);
-	js_register_cocos2dx_FileUtils(cx, global);
+    registerCocos2dClasses(cx, g_global.ref(), "jsb", &jsbObj);
+	js_register_cocos2dx_FileUtils(cx, jsbObj);
 	enableDebugger(port);
 }
 
@@ -846,7 +894,7 @@ void jsdebugger::cleanup()
 {
 	js_proxy_t *current, *tmp;
 	HASH_ITER(hh, _js_native_global_ht, current, tmp) {
-		//JS_RemoveObjectRoot(cx, &current->obj);
+		JS::RemoveObjectRoot(_cx, &current->obj);
 		HASH_DEL(_js_native_global_ht, current);
 		free(current);
 	}
@@ -856,6 +904,8 @@ void jsdebugger::cleanup()
 	}
 	HASH_CLEAR(hh, _js_native_global_ht);
 	HASH_CLEAR(hh, _native_js_global_ht);
+
+	_debugGlobal.destroy();
 
 	if (_js_log_buf) {
 		free(_js_log_buf);
@@ -880,11 +930,17 @@ void jsdebugger::cleanup()
 		cc_closesocket(server_socket);
 		server_socket = 0;
 	}
+
 }
 
 void jsdebugger::Clean()
 {
-	deleteInstance();
+	jsdebugger* inst = jsdebugger::getInstance();
+	if (inst != nullptr)
+	{
+		inst->cleanup();
+		jsdebugger::deleteInstance();
+	}
 }
 
 

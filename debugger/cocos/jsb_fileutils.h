@@ -9,7 +9,7 @@ extern JSObject *jsb_cocos2d_FileUtils_prototype;
 
 bool js_cocos2dx_FileUtils_constructor(JSContext *cx, uint32_t argc, jsval *vp);
 void js_cocos2dx_FileUtils_finalize(JSContext *cx, JSObject *obj);
-void js_register_cocos2dx_FileUtils(JSContext *cx, JSObject *global);
+void js_register_cocos2dx_FileUtils(JSContext *cx, JS::HandleObject global);
 void register_all_cocos2dx(JSContext* cx, JSObject* obj);
 bool js_cocos2dx_FileUtils_fullPathForFilename(JSContext *cx, uint32_t argc, jsval *vp);
 bool js_cocos2dx_FileUtils_getStringFromFile(JSContext *cx, uint32_t argc, jsval *vp);

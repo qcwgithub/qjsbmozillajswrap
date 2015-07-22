@@ -79,8 +79,8 @@ extern "C"
 	MOZ_API void enableDebugger(/*JSContext* cx, JSObject* global, */const char** src_searchpath, int nums, int port);
 	MOZ_API void updateDebugger();
     MOZ_API void cleanupDebugger();
-    MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
-    MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
+//     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
+//     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
 
 
     // 第1个参数是个id

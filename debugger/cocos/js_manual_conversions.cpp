@@ -187,7 +187,6 @@ bool jsval_to_std_wstring(JSContext* cx, jsval v, std::wstring* ret){
 }
 
 
-
 jsval c_string_to_jsval(JSContext* cx, const char* v, size_t length )
 {
 	if (v == NULL)
@@ -203,8 +202,8 @@ jsval c_string_to_jsval(JSContext* cx, const char* v, size_t length )
 
 		if (0 == length)
 		{
-		auto emptyStr = JS_NewStringCopyZ(cx, "");
-		return STRING_TO_JSVAL(emptyStr);
+			auto emptyStr = JS_NewStringCopyZ(cx, "");
+			return STRING_TO_JSVAL(emptyStr);
 		}
 
 	jsval ret = JSVAL_NULL;
@@ -212,7 +211,7 @@ jsval c_string_to_jsval(JSContext* cx, const char* v, size_t length )
 	jschar* strUTF16 = (jschar*)utf8_to_utf16(v, (int)length, &utf16_size);
 
 	if (strUTF16 && utf16_size > 0) {
-		JSString* str = JS_NewUCStringCopyN(cx, strUTF16, utf16_size);
+		JSString* str = JS_NewUCStringCopyN(cx, strUTF16, (size_t)utf16_size);
 		if (str) {
 			ret = STRING_TO_JSVAL(str);
 		}
@@ -228,7 +227,7 @@ jsval std_string_to_jsval(JSContext* cx, const std::string& v)
 
 jsval std_vector_string_to_jsval(JSContext *cx, const std::vector<std::string>& v)
 {
-	JSObject *jsretArr = JS_NewArrayObject(cx, 0, NULL);
+	JS::RootedObject jsretArr(cx, JS_NewArrayObject(cx, 0));
 
 	int i = 0;
 	for (const std::string obj : v)
@@ -236,7 +235,7 @@ jsval std_vector_string_to_jsval(JSContext *cx, const std::vector<std::string>& 
 		JS::RootedValue arrElement(cx);
 		arrElement = std_string_to_jsval(cx, obj);
 
-		if (!JS_SetElement(cx, jsretArr, i, &arrElement)) {
+		if (!JS_SetElement(cx, jsretArr, i, arrElement)) {
 			break;
 		}
 		++i;
@@ -290,38 +289,38 @@ jsval long_to_jsval(JSContext *cx, long number)
 #endif
 }
 
-jsval wchar_to_jsval(JSContext* cx, unsigned short* v, size_t length)
-{
-	if (v == NULL )
-	{
-		return JSVAL_NULL;
-	}
+// jsval wchar_to_jsval(JSContext* cx, unsigned short* v, size_t length)
+// {
+// 	if (v == NULL )
+// 	{
+// 		return JSVAL_NULL;
+// 	}
+// 
+// 	if (length == 0)
+// 		length = wcslen(v);
+// 
+// 	JSB_AUTOCOMPARTMENT_WITH_GLOBAL_OBJCET
+// 
+// 		if (0 == length)
+// 		{
+// 		auto emptyStr = JS_NewStringCopyZ(cx, "");
+// 		return STRING_TO_JSVAL(emptyStr);
+// 		}
+// 
+// 	jsval ret = JSVAL_NULL;
+// 	int utf16_size = length;
+// 	jschar* strUTF16 = (jschar*)v;
+// 
+// 	if (strUTF16 && utf16_size > 0) {
+// 		JSString* str = JS_NewUCStringCopyN(cx, strUTF16, utf16_size);
+// 		if (str) {
+// 			ret = STRING_TO_JSVAL(str);
+// 		}
+// 	}
+// 	return ret;
+// }
 
-	if (length == 0)
-		length = wcslen(v);
-
-	JSB_AUTOCOMPARTMENT_WITH_GLOBAL_OBJCET
-
-		if (0 == length)
-		{
-		auto emptyStr = JS_NewStringCopyZ(cx, "");
-		return STRING_TO_JSVAL(emptyStr);
-		}
-
-	jsval ret = JSVAL_NULL;
-	int utf16_size = length;
-	jschar* strUTF16 = (jschar*)v;
-
-	if (strUTF16 && utf16_size > 0) {
-		JSString* str = JS_NewUCStringCopyN(cx, strUTF16, utf16_size);
-		if (str) {
-			ret = STRING_TO_JSVAL(str);
-		}
-	}
-	return ret;
-}
-
-jsval std_wstring_to_jsval(JSContext* cx, const std::wstring& v)
-{
-	return wchar_to_jsval(cx, (unsigned short*)v.c_str(), v.size());
-}
+// jsval std_wstring_to_jsval(JSContext* cx, const std::wstring& v)
+// {
+// 	return wchar_to_jsval(cx, (unsigned short*)v.c_str(), v.size());
+// }
