@@ -26,7 +26,7 @@ JSStringWrapper::JSStringWrapper(jsval val, JSContext* cx/* = NULL*/)
 
 JSStringWrapper::~JSStringWrapper()
 {
-	CC_SAFE_DELETE_ARRAY(_buffer);
+    JS_free(jsdebugger::getInstance()->getGlobalContext(), (void*)_buffer);
 }
 
 void JSStringWrapper::set(jsval val, JSContext* cx)
@@ -39,6 +39,25 @@ void JSStringWrapper::set(jsval val, JSContext* cx)
 	{
 		CC_SAFE_DELETE_ARRAY(_buffer);
 	}
+}
+
+void JSStringWrapper::set(JSString* str, JSContext* cx)
+{
+    CC_SAFE_DELETE_ARRAY(_buffer);
+
+    if (!cx)
+    {
+        cx = jsdebugger::getInstance()->getGlobalContext();
+    }
+    // JS_EncodeString isn't supported in SpiderMonkey ff19.0.
+    //buffer = JS_EncodeString(cx, string);
+    
+    _buffer = JS_EncodeStringToUTF8(cx, JS::RootedString(cx, str));
+}
+
+const char* JSStringWrapper::get()
+{
+    return _buffer ? _buffer : "";
 }
 
 int wcslen(const unsigned short* str)
@@ -146,26 +165,6 @@ char * utf16_to_utf8(const unsigned short  *str,
 	}
 
 	return ret;
-}
-
-void JSStringWrapper::set(JSString* str, JSContext* cx)
-{
-	CC_SAFE_DELETE_ARRAY(_buffer);
-
-	if (!cx)
-	{
-		cx = jsdebugger::getInstance()->getGlobalContext();
-	}
-	// JS_EncodeString isn't supported in SpiderMonkey ff19.0.
-	//buffer = JS_EncodeString(cx, string);
-	unsigned short* pStrUTF16 = (unsigned short*)JS_GetStringCharsZ(cx, str);
-
-	_buffer = utf16_to_utf8(pStrUTF16, -1, NULL, NULL);
-}
-
-const char* JSStringWrapper::get()
-{
-	return _buffer ? _buffer : "";
 }
 
 bool jsval_to_std_string(JSContext *cx, jsval v, std::string* ret) {

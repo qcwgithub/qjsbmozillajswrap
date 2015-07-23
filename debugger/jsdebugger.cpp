@@ -110,9 +110,9 @@ void js_log(const char *format, ...) {
 	va_end(vl);
 	if (len > 0)
 	{
-		std::cout << "JS: " << _js_log_buf << std::endl;
-		//CCLOG("JS: %s", _js_log_buf);
-	}
+
+        CCLOG("JS: %s", _js_log_buf);
+    }
 }
 
 static void _clientSocketWriteAndClearString(std::string& s)
@@ -380,24 +380,23 @@ void jsdebugger::enableDebugger(unsigned int port /*= 5086*/)
 		
 		JSAutoCompartment ac(_cx, rootedDebugObj);
 		// these are used in the debug program
-		JS_DefineFunction(_cx, rootedDebugObj, "log", jsdebugger::log, 0, JSPROP_READONLY | JSPROP_ENUMERATE | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, rootedDebugObj, "_bufferWrite", JSBDebug_BufferWrite, 1, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, rootedDebugObj, "_enterNestedEventLoop", JSBDebug_enterNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, rootedDebugObj, "_exitNestedEventLoop", JSBDebug_exitNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-		JS_DefineFunction(_cx, rootedDebugObj, "_getEventLoopNestLevel", JSBDebug_getEventLoopNestLevel, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+ 		JS_DefineFunction(_cx, rootedDebugObj, "log", jsdebugger::log, 0, JSPROP_READONLY | JSPROP_ENUMERATE | JSPROP_PERMANENT);
+ 		JS_DefineFunction(_cx, rootedDebugObj, "_bufferWrite", JSBDebug_BufferWrite, 1, JSPROP_READONLY | JSPROP_PERMANENT);
+ 		JS_DefineFunction(_cx, rootedDebugObj, "_enterNestedEventLoop", JSBDebug_enterNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+ 		JS_DefineFunction(_cx, rootedDebugObj, "_exitNestedEventLoop", JSBDebug_exitNestedEventLoop, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+ 		JS_DefineFunction(_cx, rootedDebugObj, "_getEventLoopNestLevel", JSBDebug_getEventLoopNestLevel, 0, JSPROP_READONLY | JSPROP_PERMANENT);
 
-		runScript("debug/jsb_debugger.javascript", rootedDebugObj);
-
-        JS::RootedObject globalObj(_cx, g_global.ref().get());
-        JS_WrapObject(_cx, &globalObj);
-
+ 		runScript("debug/jsb_debugger.javascript", rootedDebugObj);
+ 
+         JS::RootedObject globalObj(_cx, g_global.ref().get());
+         JS_WrapObject(_cx, &globalObj);
 		// prepare the debugger
-		jsval argv = OBJECT_TO_JSVAL(globalObj);
-		JS::RootedValue outval(_cx);
-		bool ok = JS_CallFunctionName(_cx, rootedDebugObj, "_prepareDebugger", JS::HandleValueArray::fromMarkedLocation(1, &argv), &outval);
-		if (!ok) {
-			JS_ReportPendingException(_cx);
-		}
+ 		jsval argv = OBJECT_TO_JSVAL(globalObj);
+ 		JS::RootedValue outval(_cx);
+ 		bool ok = JS_CallFunctionName(_cx, rootedDebugObj, "_prepareDebugger", JS::HandleValueArray::fromMarkedLocation(1, &argv), &outval);
+ 		if (!ok) {
+ 			JS_ReportPendingException(_cx);
+ 		}
 
 		// start bg thread
 		auto t = std::thread(&serverEntryPoint, port);
@@ -409,12 +408,6 @@ void jsdebugger::enableDebugger(unsigned int port /*= 5086*/)
 		*/
 	}
 }
-
-
-
-
-
-
 
 bool jsdebugger::log(JSContext* cx, uint32_t argc, jsval *vp)
 {
@@ -433,25 +426,17 @@ bool jsdebugger::log(JSContext* cx, uint32_t argc, jsval *vp)
 
 bool jsdebugger::runScript(const char *path, JS::HandleObject global, JSContext* cx)
 {
-// 	if (global == NULL) {
-// 		global = g_global.ref().get();
-// 	}
-	
 	if (cx == NULL) {
 		cx = _cx;
 	}
-	JS::RootedObject stackGlobal(cx, global);
-	if (stackGlobal == NULL)
-	{
-		stackGlobal = g_global.ref().get();
-	}
-	compileScript(path, stackGlobal, cx);
+
+	compileScript(path, global, cx);
 	JS::RootedScript script(cx, getScript(path));
 	bool evaluatedOK = false;
 	if (script) {
 		JS::RootedValue rval(cx);
-		JSAutoCompartment ac(cx, stackGlobal);
-		evaluatedOK = JS_ExecuteScript(cx, stackGlobal, script, &rval);
+		JSAutoCompartment ac(cx, global);
+		evaluatedOK = JS_ExecuteScript(cx, global, script, &rval);
 		if (false == evaluatedOK) {
 			//cocos2d::log("(evaluatedOK == JS_FALSE)");
 			JS_ReportPendingException(cx);
@@ -479,7 +464,7 @@ JSScript* jsdebugger::getScript(const char *path)
 
 	// b) no jsc file, check js file
 	std::string fullPath = FileUtils::getInstance()->fullPathForFilename(path);
-	if (filename_script[fullPath])
+	if (filename_script.find(fullPath) != filename_script.end())
 		return filename_script[fullPath];
 
 	return NULL;
@@ -527,7 +512,7 @@ void jsdebugger::compileScript(const char *path, JSObject* global, JSContext* cx
 		Data data = futil->getDataFromFile(byteCodePath);
 		if (!data.isNull())
 		{
-			script = JS_DecodeScript(cx, data.getBytes(), static_cast<uint32_t>(data.getSize()), NULL);
+			script = JS_DecodeScript(cx, data.getBytes(), static_cast<uint32_t>(data.getSize()), nullptr);
 		}
 	}
 
@@ -538,17 +523,18 @@ void jsdebugger::compileScript(const char *path, JSObject* global, JSContext* cx
 		ReportException(cx);
 
 		std::string fullPath = futil->fullPathForFilename(path);
-		JS::CompileOptions options(cx);
-		options.setUTF8(true).setFileAndLine(fullPath.c_str(), 1);
+        JS::CompileOptions op(cx);
+        op.setUTF8(true);
+        op.setFileAndLine(fullPath.c_str(), 1);
 
 #if (TARGET_PLATFORM == PLATFORM_ANDROID)
-		std::string jsFileContent = futil->getStringFromFile(fullPath);
-		if (!jsFileContent.empty())
-		{
-			script = JS::Compile(cx, obj, options, jsFileContent.c_str(), jsFileContent.size());
-		}
+        std::string jsFileContent = futil->getStringFromFile(fullPath);
+        if (!jsFileContent.empty())
+        {
+            script = JS::Compile(cx, obj, op, jsFileContent.c_str(), jsFileContent.size());
+        }
 #else
-		script = JS::Compile(cx, obj, options, fullPath.c_str());
+        script = JS::Compile(cx, obj, op, fullPath.c_str());
 #endif
 		if (script) {
 			filename_script[fullPath] = script;
@@ -810,6 +796,7 @@ bool JSB_core_restartVM(JSContext *cx, uint32_t argc, jsval *vp)
 	return false;
 };
 
+// global is g_global, not debug global
 void registerDefaultClasses(JSContext* cx,JS::HandleObject global) {
 	// first, try to get the ns
     JS::RootedValue nsval(cx);
@@ -857,6 +844,8 @@ void registerDefaultClasses(JSContext* cx,JS::HandleObject global) {
     JS_DefineFunction(cx, global, "__isObjectValid", jsdebugger::isObjectValid, 1, JSPROP_READONLY | JSPROP_PERMANENT);
 }
 
+// obj is g_global
+// name = "jsb"
 void registerCocos2dClasses(JSContext* cx, JS::HandleObject obj, const std::string &name, JS::MutableHandleObject jsObj)
 {
     JS::RootedValue nsval(cx);
@@ -882,12 +871,38 @@ void jsdebugger::Start(JSContext* cx, JSClass* gclass, const char** src_searchpa
 	FileUtils::getInstance()->setSearchPaths(paths);
 	_cx = cx;
 	_gclass = gclass;
+    //
+    // global.cc
+    //
+    // global.require
+    // global.log
+    // global.executeScript
+    // global.forceGC
+    //
+    // global.__jsc__
+    //    global.__jsc__.garbageCollect
+    //    global.__jsc__.dumpRoot
+    //    global.__jsc__.addGCRootObject
+    //    global.__jsc__.removeGCRootObject
+    //    global.__jsc__.executeScript
+    //
+    // global.__getPlatform
+    // global.__getOS
+    // global.__getVersion
+    // global.__restartVM
+    // global.__cleanScript
+    // global.__isObjectValid
+
 	registerDefaultClasses(cx, g_global.ref());
 
-    JS::RootedObject jsbObj(cx);
-    registerCocos2dClasses(cx, g_global.ref(), "jsb", &jsbObj);
+    //
+    // global.jsb
+    //    global.jsb.FileUtils
+    //
+     JS::RootedObject jsbObj(cx);
+     registerCocos2dClasses(cx, g_global.ref(), "jsb", &jsbObj);
 	js_register_cocos2dx_FileUtils(cx, jsbObj);
-	enableDebugger(port);
+ 	enableDebugger(port);
 }
 
 void jsdebugger::cleanup()
@@ -905,7 +920,6 @@ void jsdebugger::cleanup()
 	HASH_CLEAR(hh, _js_native_global_ht);
 	HASH_CLEAR(hh, _native_js_global_ht);
 
-	_debugGlobal.destroy();
 
 	if (_js_log_buf) {
 		free(_js_log_buf);
@@ -914,7 +928,8 @@ void jsdebugger::cleanup()
 
 	for (auto iter = _js_global_type_map.begin(); iter != _js_global_type_map.end(); ++iter)
 	{
-		free(iter->second->jsclass);
+        // JS_GC will crash if freeing JSClass here!
+		// free(iter->second->jsclass);
 		free(iter->second);
 	}
 
@@ -931,6 +946,7 @@ void jsdebugger::cleanup()
 		server_socket = 0;
 	}
 
+    _debugGlobal.destroy();
 }
 
 void jsdebugger::Clean()

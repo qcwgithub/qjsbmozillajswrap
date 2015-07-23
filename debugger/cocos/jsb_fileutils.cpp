@@ -7,7 +7,9 @@
 #include "spidermonkey_specifics.h"
 
 
-JSClass  *jsb_cocos2d_FileUtils_class;
+// can not delete this JSClass*
+// or JS_GC will crash
+JSClass  *jsb_cocos2d_FileUtils_class = NULL;
 JSObject *jsb_cocos2d_FileUtils_prototype;
 
 bool js_cocos2dx_FileUtils_fullPathForFilename(JSContext *cx, uint32_t argc, jsval *vp)
@@ -672,19 +674,22 @@ static bool empty_constructor(JSContext *cx, uint32_t argc, jsval *vp) {
 	return false;
 }
 
-
+// global == g_global.jsb
 void js_register_cocos2dx_FileUtils(JSContext *cx, JS::HandleObject global) {
-    jsb_cocos2d_FileUtils_class = (JSClass *)calloc(1, sizeof(JSClass));
-    jsb_cocos2d_FileUtils_class->name = "FileUtils";
-    jsb_cocos2d_FileUtils_class->addProperty = JS_PropertyStub;
-    jsb_cocos2d_FileUtils_class->delProperty = JS_DeletePropertyStub;
-    jsb_cocos2d_FileUtils_class->getProperty = JS_PropertyStub;
-    jsb_cocos2d_FileUtils_class->setProperty = JS_StrictPropertyStub;
-    jsb_cocos2d_FileUtils_class->enumerate = JS_EnumerateStub;
-    jsb_cocos2d_FileUtils_class->resolve = JS_ResolveStub;
-    jsb_cocos2d_FileUtils_class->convert = JS_ConvertStub;
-    jsb_cocos2d_FileUtils_class->finalize = js_cocos2d_FileUtils_finalize;
-    jsb_cocos2d_FileUtils_class->flags = JSCLASS_HAS_RESERVED_SLOTS(2);
+    if (jsb_cocos2d_FileUtils_class == NULL)
+    {
+        jsb_cocos2d_FileUtils_class = (JSClass *)calloc(1, sizeof(JSClass));
+        jsb_cocos2d_FileUtils_class->name = "FileUtils";
+        jsb_cocos2d_FileUtils_class->addProperty = JS_PropertyStub;
+        jsb_cocos2d_FileUtils_class->delProperty = JS_DeletePropertyStub;
+        jsb_cocos2d_FileUtils_class->getProperty = JS_PropertyStub;
+        jsb_cocos2d_FileUtils_class->setProperty = JS_StrictPropertyStub;
+        jsb_cocos2d_FileUtils_class->enumerate = JS_EnumerateStub;
+        jsb_cocos2d_FileUtils_class->resolve = JS_ResolveStub;
+        jsb_cocos2d_FileUtils_class->convert = JS_ConvertStub;
+        jsb_cocos2d_FileUtils_class->finalize = js_cocos2d_FileUtils_finalize;
+        jsb_cocos2d_FileUtils_class->flags = JSCLASS_HAS_RESERVED_SLOTS(2);
+    }
 
     static JSPropertySpec properties[] = {
         JS_PSG("__nativeObj", js_is_native_obj, JSPROP_PERMANENT | JSPROP_ENUMERATE),
