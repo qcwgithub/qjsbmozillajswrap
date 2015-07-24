@@ -6,7 +6,7 @@
             'variables': 
             {
                 'source_path': '.',
-                'js_debug': 'true', #enable js debug? true or false (you can change this)
+                'js_debug': 'false', #enable js debug? true or false (you can change this)
             },
             'include_dirs': 
             [
