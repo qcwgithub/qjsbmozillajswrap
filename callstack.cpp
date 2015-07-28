@@ -5,8 +5,8 @@
 // global variables
 //
 //
-MAPID idFunRet = 0; // callFunctionValue后，往 valueMap 添加后得到的IDI
-MAPID idSave = 0; //往valueMap添加后得到的ID
+MAPID idFunRet = 0; // after callFunctionValue, javascript return value
+MAPID idSave = 0; // saving some id to valueMap
 
 JSCallStack jsCallStack;
 #define ArgVal(i) (jsCallStack.currStack->args->get(i))
@@ -32,7 +32,7 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
     bool isStatic = args.get(3).toBoolean();
 
     //
-    // 计算参数个数，不算末尾的 undefined
+    // Calculate actual parameter count
     //
     aStack.actualArgc = argc;
     while (aStack.actualArgc > 0 && args.get(aStack.actualArgc - 1).isUndefined())

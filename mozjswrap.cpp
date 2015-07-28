@@ -388,7 +388,7 @@ static JSSecurityCallbacks securityCallbacks = {
 	NULL
 };
 // 
-// 返回0表示没错
+// return 0: success
 //
 JSCompartment* oldCompartment = 0;
 JSErrorReporter oldErrorReporter = 0;

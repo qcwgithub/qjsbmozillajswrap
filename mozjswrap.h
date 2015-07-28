@@ -82,9 +82,6 @@ extern "C"
 //     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
 //     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
 
-
-    // 第1个参数是个id
-    // 因为会调用 setProperty 前面一定是用创建 JS 类的对象
     MOZ_API void setProperty(MAPID id, const char* name, MAPID valueID);
     MOZ_API void getElement(MAPID id, int i);
     MOZ_API int getArrayLength(MAPID id);
@@ -180,7 +177,6 @@ extern "C"
     MOZ_API _BOOL isTraced(MAPID id);
     MOZ_API void setTempTrace(MAPID id, _BOOL bTempTrace);
 
-    // 目前仅用于 arg，不够用的话要再加 (GetType e) 参数
     MOZ_API MAPID addArgObj2Map();
     MOZ_API void removeObjFromMap(MAPID id);
 
