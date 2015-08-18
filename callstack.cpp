@@ -363,9 +363,9 @@ void setBoolean(eSetType e, _BOOL v)
     JS::RootedValue val(g_cx, BOOLEAN_TO_JSVAL(v == _TRUE));
 	setVal(e, val);
 }
-void setString(eSetType e, const char* value)
+void setString(eSetType e, const jschar* value)
 {
-	JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, value));
+	JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
     JS::RootedValue val(g_cx, STRING_TO_JSVAL(jsString));
 	setVal(e, val);
 }
