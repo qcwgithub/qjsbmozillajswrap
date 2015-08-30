@@ -793,6 +793,37 @@ MOZ_API _BOOL evaluate( const char* ascii, int length, const char* filename )
     return _TRUE;
 }
 
+MOZ_API _BOOL evaluate_jsc( const char* ascii, int length, const char* filename )
+{
+	JS::CompileOptions options(g_cx);
+	options.setVersion(JSVERSION_LATEST);
+	options.setUTF8(true);
+	options.setFileAndLine(filename, 1);
+
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+#ifdef SPIDERMONKEY31
+	JS::RootedScript jsScript(g_cx, JS_DecodeScript(g_cx, ascii, length, NULL));
+#else // V33
+	JS::RootedScript jsScript(g_cx, JS_DecodeScript(g_cx, ascii, length, NULL));
+#endif
+	if (jsScript == 0)
+	{
+		Assert(false, "JS_DecodeScript fail");
+		return _FALSE;
+	}
+
+	JS::RootedValue val(g_cx);
+	if (!JS_ExecuteScript(g_cx, roGlobal, jsScript, &val))
+	{
+		Assert(false, "JS_ExecuteScript fail");
+		return _FALSE;
+	}
+
+	// TODO add script root
+	//JS_AddNamedScriptRoot(g_cx, &jsScript, filename);
+
+	return _TRUE;
+}
 const char* getArgString(jsval* vp, int i)
 {
     JS::RootedValue val(g_cx, JS_ARGV(g_cx, vp)[i]);
