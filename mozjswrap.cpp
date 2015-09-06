@@ -864,10 +864,18 @@ MOZ_API MAPID getObjFunction(MAPID id, const char* fname)
 //         return 0;
 //     }
 
-    MGETOBJ1(id, obj, 0);
+	//MGETOBJ1(id, obj, 0);
+
+	MGETOBJ0(id, jsObj);
+	if (jsObj == 0)
+	{
+		// no error
+		// defauting to global object
+		jsObj = g_global.ref().get();
+	}
 
     JS::RootedValue val(g_cx);
-    JS_GetProperty(g_cx, obj, fname, &val);
+    JS_GetProperty(g_cx, jsObj, fname, &val);
     if (val.isObject() && 
         JS_ObjectIsFunction(g_cx, &val.toObject()))
     {
