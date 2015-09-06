@@ -82,6 +82,7 @@ extern "C"
 //     MOZ_API bool Jsh_RunScript(JSContext* cx, JSObject* global, const char* script_file);
 //     MOZ_API void Jsh_CompileScript(JSContext* cx, JSObject* global, const char* script_file);
 
+	MOZ_API void getProperty(MAPID id, const char* name);
     MOZ_API void setProperty(MAPID id, const char* name, MAPID valueID);
     MOZ_API void getElement(MAPID id, int i);
     MOZ_API int getArrayLength(MAPID id);
