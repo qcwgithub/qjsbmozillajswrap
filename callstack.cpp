@@ -106,7 +106,8 @@ JS::Value getVal(eGetType e, bool bIncIndex)
             JS::RootedValue val(g_cx);
             valueMap::getVal(idSave, &val);
 
-            valueMap::removeByID(idSave, false);
+			if (bIncIndex) // 2015.Sep.7
+				valueMap::removeByID(idSave, false);
 
             return val;
         }
