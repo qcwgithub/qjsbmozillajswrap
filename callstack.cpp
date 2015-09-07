@@ -156,7 +156,10 @@ T val2Number(JS::HandleValue val)
 char* val2String(JS::HandleValue val)
 {
     JS::RootedString jsStr(g_cx, val.toString());
-    return getMarshalStringFromJSString(g_cx, jsStr);
+	if (jsStr == 0)
+		return "";
+	else
+		return getMarshalStringFromJSString(g_cx, jsStr);
 }
 
 template<class T>
