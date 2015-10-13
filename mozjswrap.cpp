@@ -498,6 +498,12 @@ MOZ_API void ShutdownJSEngine(_BOOL bCleanup)
 MOZ_API void getProperty(MAPID id, const char* name)
 {
 	MGETOBJ0(id, jsObj);
+	if (jsObj == 0)
+	{
+		// no error
+		// defauting to global object
+		jsObj = g_global.ref().get();
+	}
 	JS::RootedValue val(g_cx);
 	if (!JS_GetProperty(g_cx, jsObj, name, &val))
 	{
@@ -509,7 +515,13 @@ MOZ_API void getProperty(MAPID id, const char* name)
 
 MOZ_API void setProperty( MAPID id, const char* name, MAPID valueID )
 {
-    MGETOBJ0(id, jsObj);
+	MGETOBJ0(id, jsObj);
+	if (jsObj == 0)
+	{
+		// no error
+		// defauting to global object
+		jsObj = g_global.ref().get();
+	}
 
     JS::RootedValue valValue(g_cx);
     if (!valueMap::getVal(valueID, &valValue))
