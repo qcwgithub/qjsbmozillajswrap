@@ -371,6 +371,8 @@ void setString(eSetType e, const jschar* value)
 {
 	JS::RootedString jsString(g_cx, JS_NewUCStringCopyZ(g_cx, value));
     JS::RootedValue val(g_cx, STRING_TO_JSVAL(jsString));
+	if (value == 0)
+		val.setUndefined();
 	setVal(e, val);
 }
 void setVector2(eSetType e, float x, float y)
