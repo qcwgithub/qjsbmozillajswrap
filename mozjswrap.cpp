@@ -722,6 +722,7 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
 			Assert(b);
             arr[i + 2] = ele;
         }
+		valueArr::clear(true);
         JS::RootedValue entryVal(g_cx);
         valueMap::getVal(idErrorEntry, &entryVal);
 
@@ -746,6 +747,7 @@ MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount)
                 valueMap::getVal(valueArr::arr[i], &ele);
                 arr[i] = ele;
             }
+			valueArr::clear(true);
 
 			ret = JS_CallFunctionValue(g_cx, jsObj, fval, JS::HandleValueArray::fromMarkedLocation(argCount, arr), &retVal);
 			funArgArrayMgr::giveBack(arr);
