@@ -96,7 +96,7 @@ int* valueArr::makeSureArrHeapObj(int index)
         if (index > 0)
         {
             int N = min(oldS - 1, index);
-            for (int i = 0; i < N; i++)
+            for (int i = 0; i <= N; i++)
                 _arr[i] = arr[i];
         }
         if (arr)
