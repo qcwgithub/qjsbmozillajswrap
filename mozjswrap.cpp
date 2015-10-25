@@ -454,6 +454,7 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
 
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
     shutingDown = false;
+	startMapID = valueMap::getIndex();
     return 0;
 }
 
@@ -916,4 +917,8 @@ MOZ_API int getValueMapSize()
 MOZ_API int getValueMapIndex()
 {
 	return valueMap::getIndex();
+}
+MOZ_API int getValueMapStartIndex()
+{
+	return startMapID;
 }

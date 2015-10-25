@@ -45,6 +45,7 @@ extern MAPID idSave; //往valueMap添加后得到的ID
 extern JS::Heap<JSObject*>* ppCSObj;
 extern MAPID idErrorEntry;
 extern bool shutingDown;
+extern int startMapID;
 
 // marshal
 // it seems they treat bool as int
@@ -200,8 +201,7 @@ extern "C"
 
 	MOZ_API int getValueMapSize();
 	MOZ_API int getValueMapIndex();
-
-
+	MOZ_API int getValueMapStartIndex();
 }
 
 
