@@ -46,6 +46,7 @@ extern JS::Heap<JSObject*>* ppCSObj;
 extern MAPID idErrorEntry;
 extern bool shutingDown;
 extern int startMapID;
+extern int endMapID;
 
 // marshal
 // it seems they treat bool as int

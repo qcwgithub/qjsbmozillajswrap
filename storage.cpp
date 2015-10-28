@@ -190,6 +190,7 @@ int valueMap::index = 1;
 bool valueMap::tracing = false;
 std::list<int> valueMap::LstTempID;
 int startMapID = 0;
+int endMapID = 0;
 
 //
 // trace protects objects from being collected

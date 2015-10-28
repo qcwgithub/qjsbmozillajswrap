@@ -422,10 +422,11 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
 		JS_SetSecurityCallbacks(rt, &securityCallbacks);
 		JS_SetNativeStackQuota(rt, 500000, 0, 0);
 
-		cx = JS_NewContext(rt, 8192);
-		JS::RuntimeOptionsRef(rt).setIon(true);
-		JS::RuntimeOptionsRef(rt).setBaseline(true);
 	}
+	
+	cx = JS_NewContext(rt, 8192);
+	JS::RuntimeOptionsRef(rt).setIon(true);
+	JS::RuntimeOptionsRef(rt).setBaseline(true);
 
 	// Set error reporter
 	oldErrorReporter = JS_SetErrorReporter(cx, er);
@@ -455,11 +456,14 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
     //JS_SetGCCallback(rt, jsGCCallback, 0/* user data */);
     shutingDown = false;
 	startMapID = valueMap::getIndex();
+	Assert(endMapID == 0 || startMapID == endMapID);
     return 0;
 }
 
 MOZ_API void ShutdownJSEngine(_BOOL bCleanup)
 {
+	endMapID = valueMap::getIndex();
+
 	// Reset
 	{
 		shutingDown = true;
@@ -481,13 +485,13 @@ MOZ_API void ShutdownJSEngine(_BOOL bCleanup)
 
 		JS_LeaveCompartment(g_cx, oldCompartment);
 		g_global.destroy();
-
+		
+		JS_DestroyContext(g_cx);
 		JS_GC(g_rt);
 	}
 
 	if (bCleanup == _TRUE)
 	{
-		JS_DestroyContext(g_cx);
 		JS_DestroyRuntime(g_rt);
 		JS_ShutDown();
 
