@@ -260,13 +260,18 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
 	p.mark = (char)mark;
 
 	int J = 0;
-	list<int>::iterator itBegin = lstFree.begin();
+	/*list<int>::iterator itBegin = lstFree.begin();
 	if (itBegin != lstFree.end())
 	{
 		J = *itBegin;
 		lstFree.erase(itBegin);
 	}
-	else
+	else*/
+	// 2015.Nov.3rd
+	// 先改成不回收利用
+	// 脚本的成员函数如 Update 如果 ID 是使用回收来的，当时可能还存在于 idFunRet
+	// 再次 callFunctionValue 时会把这个 ID 给移除掉
+	// 可能是导致 调用到其他脚本的 Update，错乱了
 	{
 		J = valueMap::index++;
 	}
