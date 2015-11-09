@@ -445,7 +445,7 @@ bool valueMap::removeByID( MAPID i, bool bForce )
             Assert(!valueMap::tracing);
 
 			// 0)
-			lstFree.push_back(it->first);
+			//lstFree.push_back(it->first);
 
 			// 1)
 			VMAP::iterator vit = VMap.find(it->second.heapValue.get().asRawBits());
