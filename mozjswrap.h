@@ -173,6 +173,7 @@ extern "C"
     MOZ_API void removeByID( MAPID id );
     MOZ_API void moveID2Arr(int id, int arrIndex);
 
+	MOZ_API void setCallFunctionValueRemoveArr(_BOOL bRemove);
     MOZ_API void callFunctionValue(MAPID jsObjID, MAPID funID, int argCount);
 	MOZ_API int incRefCount(MAPID id);
 	MOZ_API int decRefCount(MAPID id);
