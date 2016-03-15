@@ -14,6 +14,7 @@
 #include <vector>
 #include <map>
 #include <list>
+#include <string>
 using namespace std;
 
 #ifdef _WINDOWS
@@ -47,6 +48,12 @@ extern MAPID idErrorEntry;
 extern bool shutingDown;
 extern int startMapID;
 extern int endMapID;
+extern bool GCing;
+extern bool g_bUseCacheForStruct;
+
+//typedef void
+//(* NurseryCollectCallback)(JSRuntime *rt, JS::gcreason::Reason, int status /* 0 - start 1 - end*/);
+//void JS_SetNurseryCollectCallback(NurseryCollectCallback cb);
 
 // marshal
 // it seems they treat bool as int
@@ -90,6 +97,9 @@ extern "C"
     MOZ_API int getArrayLength(MAPID id);
 
     MOZ_API void gc();
+    MOZ_API void MaybeGC();
+    MOZ_API int GetGCCount();
+    MOZ_API int GetMinorGCCount();
 
     enum eGetType
     {
@@ -196,24 +206,28 @@ extern "C"
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected, JSNative print);
     MOZ_API _BOOL initErrorHandler();
     MOZ_API void ShutdownJSEngine(_BOOL bCleanup);
-    JSObject* _createJSClassObject(char* name);
-    MOZ_API MAPID createJSClassObject(char* name);
+    JSObject* _createJSClassObject(char* name, _BOOL useCache);
+    MOZ_API MAPID createJSClassObject(char* name, _BOOL useCache);
     MOZ_API void attachFinalizerObject(MAPID id);
 	MOZ_API int newJSClassObject(const char* name);
 
 	MOZ_API int getValueMapSize();
 	MOZ_API int getValueMapIndex();
 	MOZ_API int getValueMapStartIndex();
+
+	MOZ_API void setUseCacheForStruct(_BOOL b);
+	MOZ_API void resetCacheStructIndex();
 }
 
 
 struct AJSCallStack
 {
-	JS::Value* vp;
+	JS::Value* rval;
 	int argc;
 	int argIndex;
 	int actualArgc;
 	JS::CallArgs* args;
+	//vector<JS::RootedValue*> lst;
 
 	//	MAPID idFunRet;
 	//	MAPID idSave;
@@ -351,6 +365,8 @@ class valueMap
 	static std::list<int> LstTempID;
 
 public:
+	static void clearVMap();
+	static void rebuildVMap();
     static MAPID add(JS::HandleValue val, int mark);
     static void trace(JSTracer *trc);
     static MAPID addFunction(JS::HandleValue val);
@@ -364,6 +380,7 @@ public:
     static bool setTrace(MAPID id, bool trace);
     static bool setTempTrace(MAPID id, bool tempTrace);
     static bool setHasFinalizeOp(MAPID id, bool has);
+	static bool getHasFinalizeOp(MAPID id);
     static bool clear();
 
 	static int getMapSize(){ return (int)mMap.size(); }

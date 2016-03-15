@@ -203,8 +203,8 @@ void valueMap::trace(JSTracer *trc)
 
 	//VMap.clear();
 
-	VMAP::iterator vit;
-	uint64_t Old, New;
+	//VMAP::iterator vit;
+	//uint64_t Old, New;
 
     //char sz[16] = {'v','m',0};
     VALUEMAPIT it = mMap.begin();
@@ -216,7 +216,7 @@ void valueMap::trace(JSTracer *trc)
         
         if (p->bTrace || p->bTempTrace || p->refCount > 0)
         {
-			Old = p->heapValue.get().asRawBits();
+			//Old = p->heapValue.get().asRawBits();
 			//
 			// Set name to 0 is OK? it seems OK. I'm not sure.
 			// 
@@ -224,18 +224,19 @@ void valueMap::trace(JSTracer *trc)
             // 
             //
             JS_CallHeapValueTracer(trc, &p->heapValue, 0 /* name */);
-			New = p->heapValue.get().asRawBits();
-			if (New != Old)
-			{
-				//
-				// Will it get here?
-				// Not sure
-				//
-				vit = VMap.find(Old);
-				Assert(vit != VMap.end());
-				VMap.erase(vit);
-				VMap.insert(VMAP::value_type(New, it->first));
-			}
+			//New = p->heapValue.get().asRawBits();
+			//if (New != Old)
+			//{
+			//	New = Old;
+			//	//
+			//	// Will it get here?
+			//	// Not sure
+			//	//
+			//	vit = VMap.find(Old);
+			//	Assert(vit != VMap.end());
+			//	VMap.erase(vit);
+			//	VMap.insert(VMAP::value_type(New, it->first));
+			//}
         }
     }
 
@@ -245,6 +246,23 @@ void valueMap::trace(JSTracer *trc)
 // 	}
 
     valueMap::tracing = false;
+}
+
+void valueMap::clearVMap()
+{
+	VMap.clear();
+}
+
+// TODO
+// 这个函数调的频率有点高，大约1秒一次吧
+// 只有开启 Generational 这个函数才有意义
+void valueMap::rebuildVMap()
+{
+	VALUEMAPIT it = mMap.begin();
+    for (; it != mMap.end(); it++)
+    {
+		VMap.insert(VMAP::value_type(it->second.heapValue.get().asRawBits(), it->first));
+    }
 }
 
 MAPID valueMap::add(JS::HandleValue val, int mark)
@@ -284,6 +302,7 @@ MAPID valueMap::add(JS::HandleValue val, int mark)
 	//mMap[valueMap::index] = p;
 
 	// 2)
+	Assert(!GCing);
 	VMap.insert(VMAP::value_type(p.heapValue.get().asRawBits(), J));
     
     return J;
@@ -312,7 +331,7 @@ MAPID valueMap::containsValue(JS::Value v)
 	if (vit != VMap.end())
 	{
 		VALUEMAPIT it = mMap.find(vit->second);
-		Assert(it != mMap.end());
+		Assert(it != mMap.end() && it->second.heapValue.get().asRawBits() == v.asRawBits());
 		return it->first;
 	}
 
@@ -406,6 +425,16 @@ bool valueMap::setHasFinalizeOp(MAPID id, bool has)
     return false;
 }
 
+bool valueMap::getHasFinalizeOp(MAPID id)
+{
+	VALUEMAPIT it = mMap.find(id);
+    if (it != mMap.end())
+    {
+        return it->second.hasFinalizeOp;
+    }
+	return false;
+}
+
 bool valueMap::clear()
 {
 //     VALUEMAPIT it = mMap.begin();
@@ -448,9 +477,12 @@ bool valueMap::removeByID( MAPID i, bool bForce )
 			//lstFree.push_back(it->first);
 
 			// 1)
-			VMAP::iterator vit = VMap.find(it->second.heapValue.get().asRawBits());
-			Assert(vit != VMap.end());
-			VMap.erase(vit);
+			//if (!GCing)
+			{
+				VMAP::iterator vit = VMap.find(it->second.heapValue.get().asRawBits());
+				Assert(vit != VMap.end());
+				VMap.erase(vit);
+			}
 
             // 2)
             mMap.erase(it);

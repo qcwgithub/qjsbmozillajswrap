@@ -12,14 +12,14 @@ JSCallStack jsCallStack;
 #define ArgVal(i) (jsCallStack.currStack->args->get(i))
 #define ArgIndex (jsCallStack.currStack->argIndex)
 #define ActualArgc (jsCallStack.currStack->actualArgc)
-#define ArgVp (jsCallStack.currStack->vp)
+#define ArgRval (jsCallStack.currStack->rval)
 
 
 CSEntry csEntry = 0; 
 bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
 {
 	AJSCallStack aStack;
-	aStack.vp = vp;
+	aStack.rval = vp;
 	aStack.argc = argc;
 	
 
@@ -314,7 +314,7 @@ void setVal(eSetType e, JS::HandleValue val)
         }
 		break;
 	case SetRval:
-		JS_SET_RVAL(g_cx, ArgVp, val);
+		JS_SET_RVAL(g_cx, ArgRval, val);
 		break;
 	case SetArgRef:
 	default:
@@ -377,7 +377,7 @@ void setString(eSetType e, const jschar* value)
 }
 void setVector2(eSetType e, float x, float y)
 {
-    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector2"));
+    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector2", g_bUseCacheForStruct));
     if (jsObj)
     {
         JS::RootedValue val(g_cx);
@@ -395,7 +395,7 @@ void setVector2(eSetType e, float x, float y)
 }
 void setVector3(eSetType e, float x, float y, float z)
 {
-    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector3"));
+    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector3", g_bUseCacheForStruct));
     if (jsObj)
     {
         JS::RootedValue val(g_cx);

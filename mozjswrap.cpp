@@ -203,6 +203,10 @@ there are now 2 places calling this function:
 */
 void attachFinalizerObject(MAPID id)
 {
+	if (valueMap::getHasFinalizeOp(id))
+		return;
+    valueMap::setHasFinalizeOp(id, true);
+
     MGETOBJ0(id, obj);
 
 	//
@@ -213,8 +217,6 @@ void attachFinalizerObject(MAPID id)
     JS::RootedValue val(g_cx);
     val.setObject(*fObj);
     JS_DefineProperty(g_cx, obj, "__just_for_finalize", val, 0/* getter */, 0/* setter */, 0/* attr */);
-
-    valueMap::setHasFinalizeOp(id, true);
 }
 
 /*
@@ -242,6 +244,43 @@ C. 当 JSSerizlizer 需要生成一个对象时：newJSClassObject
 
 */
 
+void jsb_saveStackObj(JS::HandleObject jsObj)
+{
+	//JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, name));	
+
+    //JS::RootedValue valName(g_cx);
+    //valName.setString(jsString);
+
+	JS::RootedValue valObj(g_cx);
+	valObj.setObject(*(jsObj.get()));
+
+	JS::Value arr[] = { valObj };
+	
+    JS::RootedValue _rval(g_cx);
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+    bool suc = JS_CallFunctionName(g_cx, roGlobal, "jsb_saveStackObj", JS::HandleValueArray::fromMarkedLocation(1, arr), &_rval);
+	Assert(suc);
+}
+
+JSObject* jsb_getStackObj(char* name)
+{
+	JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, name));
+
+    JS::RootedValue val(g_cx);
+    val.setString(jsString);
+
+    JS::RootedValue _rval(g_cx);
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+    bool suc = JS_CallFunctionName(g_cx, roGlobal, "jsb_getStackObj", JS::HandleValueArray::fromMarkedLocation(1, val.address()), &_rval);
+	Assert(suc);
+	if (suc && _rval.isObject())
+    {
+		return _rval.toObjectOrNull();
+	}
+
+	return 0;
+}
+
 //
 // 创建一个JS类对象
 // 返回jsObj
@@ -255,8 +294,15 @@ C. 当 JSSerizlizer 需要生成一个对象时：newJSClassObject
 // 
 // 注意：这个操作有别于 new GameObject.ctor()，new GameObject.ctor() 是会调用到C#去创建 C#对象，我们这里只是单纯的JS对象
 // 
-JSObject* _createJSClassObject(char* name)
+JSObject* _createJSClassObject(char* name, _BOOL useCache)
 {
+	if (useCache)
+	{
+		JSObject* jsObj = jsb_getStackObj(name);
+		if (jsObj)
+			return jsObj;
+	}
+
     JS::RootedObject _t(g_cx);
 
     if (_t = GetJSTableByName(name))
@@ -265,26 +311,43 @@ JSObject* _createJSClassObject(char* name)
         JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
         
 		JSObject* jsObj = JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, JS::NullPtr()/* parentProto */);
+
+		if (useCache)
+		{
+			JS::RootedObject roObj(g_cx, jsObj);
+			jsb_saveStackObj(roObj); 
+		}
+
         return jsObj;
     }
     return 0;
-}
-// to create a C# object
-MOZ_API MAPID createJSClassObject(char* name)
+}	
+
+// to create a C# object，绝对不是 Vector2，Vector3
+MOZ_API MAPID createJSClassObject(char* name, _BOOL useCache)
 {
-    JS::RootedObject jsObj(g_cx, _createJSClassObject(name));
+    JS::RootedObject jsObj(g_cx, _createJSClassObject(name, useCache));
     if (jsObj)
     {
 		JS::Value _v; 
 		_v.setObject(*jsObj);
         JS::RootedValue val(g_cx, _v);
-        int id = valueMap::add(val, 1);
-        attachFinalizerObject(id);
+
+		// 目前对于结构体，_createJSClassObject 有可能返回已经存在的对象
+		// 这样的话，不可以再 attachFinalizerObject！否则出错
+		int id = valueMap::getID(val, false);
+		if (id == 0)
+        {
+			id = valueMap::add(val, 1);
+			attachFinalizerObject(id);
+		}
+
         return id;
     }
     return 0;
 }
 // 如果说 JS ctor不会调用到C# 那么 createXXX newXXX 结果一样
+// 这个只有 JSComponent，JSSerializer 会调用，不需要使用缓存
 MOZ_API int newJSClassObject(const char* name)
 {
     JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, name));
@@ -387,6 +450,35 @@ static JSSecurityCallbacks securityCallbacks = {
 	CheckObjectAccess,
 	NULL
 };
+
+bool GCing = false;
+int gcCount = 0;
+void MyJSGCCallback(JSRuntime *rt, JSGCStatus status, void *data)
+{
+	if (status == JSGC_BEGIN)
+	{
+		gcCount++;
+		GCing = true;
+	//	valueMap::clearVMap();
+	}
+	else if (status == JSGC_END)
+	{	
+		GCing = false;
+	//	valueMap::rebuildVMap();
+	}
+}
+
+int minorGCCount = 0;
+//void MyNurseryCollectCallback(JSRuntime *rt, JS::gcreason::Reason, int status /* 0 - start 1 - end*/)
+//{
+//	if (status == 0)
+//	{
+//		minorGCCount++;
+//		valueMap::clearVMap();
+//	}
+//	else
+//		valueMap::rebuildVMap();
+//}
 // 
 // return 0: success
 //
@@ -406,6 +498,9 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
 	{
 		g_firstInit = false;
 
+
+//		JS_SetNurseryCollectCallback(MyNurseryCollectCallback);
+
 		if (!JS_Init())
 		{
 			return 1;
@@ -421,18 +516,21 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
 		JS_SetTrustedPrincipals(rt, &shellTrustedPrincipals);
 		JS_SetSecurityCallbacks(rt, &securityCallbacks);
 		JS_SetNativeStackQuota(rt, 500000, 0, 0);
-
+		JS_SetGCCallback(rt, MyJSGCCallback, 0);		
 	}
 	
+	gcCount = 0;
+	minorGCCount = 0;
+
 	cx = JS_NewContext(rt, 8192);
-	JS::RuntimeOptionsRef(rt).setIon(true);
-	JS::RuntimeOptionsRef(rt).setBaseline(true);
+	/*JS::RuntimeOptionsRef(rt).setIon(true);
+	JS::RuntimeOptionsRef(rt).setBaseline(true);*/
 
 	// Set error reporter
 	oldErrorReporter = JS_SetErrorReporter(cx, er);
 
     JS::CompartmentOptions options;
-	//options.setVersion(JSVERSION_LATEST);
+	options.setVersion(JSVERSION_LATEST);
 	g_global.construct(cx);
 	g_global.ref() = JS_NewGlobalObject(cx, &global_class, 0/*principals*/, JS::DontFireOnNewGlobalHook, options);
 	//JSObject*& global = g_global;
@@ -569,7 +667,18 @@ MOZ_API void gc()
 {
     JS_GC(g_rt);
 }
-
+MOZ_API void MaybeGC()
+{
+    JS_MaybeGC(g_cx);
+}
+MOZ_API int GetGCCount()
+{
+	return gcCount;
+}
+MOZ_API int GetMinorGCCount()
+{
+	return minorGCCount;
+}
 
 MOZ_API void moveSaveID2Arr( int arrIndex )
 {
@@ -936,4 +1045,18 @@ MOZ_API int getValueMapIndex()
 MOZ_API int getValueMapStartIndex()
 {
 	return startMapID;
+}
+
+bool g_bUseCacheForStruct = false;
+MOZ_API void setUseCacheForStruct(_BOOL b)
+{
+	g_bUseCacheForStruct = (b == _TRUE);
+}
+
+MOZ_API void resetCacheStructIndex()
+{
+	JS::RootedValue _rval(g_cx);
+	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+	bool suc = JS_CallFunctionName(g_cx, roGlobal, "jsb_resetStackObjIndex", JS::HandleValueArray::empty(), &_rval);
+	Assert(suc);
 }
