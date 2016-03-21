@@ -8,6 +8,8 @@
 #pragma message("******** mozjswrap: js debug is disabled! ********") 
 #endif
 
+
+#include "uthash.h"
 #include "jsapi.h"
 #include "mozilla/Maybe.h"
 //#include "js/tracer.h"

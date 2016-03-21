@@ -265,36 +265,58 @@ MOZ_API _BOOL isFunction(eGetType e)
 	return _FALSE;
 }
 
-bool valFullNameIs(JS::HandleValue val, const char* name)
-{
-	if (val.isObject())
-	{
-		JS::RootedObject obj(g_cx, &val.toObject());
-		JS::RootedValue v(g_cx);
-		JS_GetProperty(g_cx, obj, "_fullname", &v);
-		if (v.isString())
-		{
-			// TODO fix memory leak
-			JS::RootedString jsStr(g_cx, v.toString());
-			const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
-			bool ret = (strcmp(str, name) == 0);
-            JS_free(g_cx, (void*)str);
-            return ret;
-		}
-	}
-	return false;
-}
+//bool valFullNameIs(JS::HandleValue val, const char* name)
+//{
+//	if (val.isObject())
+//	{
+//		JS::RootedObject obj(g_cx, &val.toObject());
+//		JS::RootedValue v(g_cx);
+//		JS_GetProperty(g_cx, obj, "_fullname", &v);
+//		if (v.isString())
+//		{
+//			// TODO fix memory leak
+//			JS::RootedString jsStr(g_cx, v.toString());
+//			const char* str = JS_EncodeStringToUTF8(g_cx, jsStr);
+//			bool ret = (strcmp(str, name) == 0);
+//            JS_free(g_cx, (void*)str);
+//            return ret;
+//		}
+//	}
+//	return false;
+//}
 
 MOZ_API _BOOL isVector2( eGetType e )
 {
 	JS::RootedValue val(g_cx, getVal(e, false));
-	return (valFullNameIs(val, "UnityEngine.Vector2") ? _TRUE : _FALSE);
+	if (val.isObject())
+	{
+		JS::RootedObject obj(g_cx, &val.toObject());
+		JS::RootedValue v(g_cx);
+		JS_GetProperty(g_cx, obj, "$isv2", &v);
+		if (v.isBoolean())
+			return v.toBoolean() ? _TRUE : _FALSE;
+	}
+	return _FALSE;
+	
+	/*JS::RootedValue val(g_cx, getVal(e, false));
+	return (valFullNameIs(val, "UnityEngine.Vector2") ? _TRUE : _FALSE);*/
 }
 
 MOZ_API _BOOL isVector3( eGetType e )
 {
 	JS::RootedValue val(g_cx, getVal(e, false));
-	return (valFullNameIs(val, "UnityEngine.Vector3") ? _TRUE : _FALSE);
+	if (val.isObject())
+	{
+		JS::RootedObject obj(g_cx, &val.toObject());
+		JS::RootedValue v(g_cx);
+		JS_GetProperty(g_cx, obj, "$isv3", &v);
+		if (v.isBoolean())
+			return v.toBoolean() ? _TRUE : _FALSE;
+	}
+	return _FALSE;
+
+	/*JS::RootedValue val(g_cx, getVal(e, false));
+	return (valFullNameIs(val, "UnityEngine.Vector3") ? _TRUE : _FALSE);*/
 }
 
 MOZ_API int getFunction(eGetType e)
@@ -385,9 +407,12 @@ void setVector2(eSetType e, float x, float y)
         val.setDouble(x); JS_SetProperty(g_cx, jsObj, "x", val);
         val.setDouble(y); JS_SetProperty(g_cx, jsObj, "y", val);
 
-		JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, "UnityEngine.Vector2"));
+		/*JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, "UnityEngine.Vector2"));
 		val.setString(jsString); 
-		JS_SetProperty(g_cx, jsObj, "_fullname", val);
+		JS_SetProperty(g_cx, jsObj, "_fullname", val);*/
+
+		val.setBoolean(true);
+		JS_SetProperty(g_cx, jsObj, "$isv2", val);
 
         val.setObject(*jsObj);
         setVal(e, val);
@@ -404,9 +429,12 @@ void setVector3(eSetType e, float x, float y, float z)
         val.setDouble(y); JS_SetProperty(g_cx, jsObj, "y", val);
 		val.setDouble(z); JS_SetProperty(g_cx, jsObj, "z", val);
 
-		JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, "UnityEngine.Vector3"));
+		/*JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, "UnityEngine.Vector3"));
 		val.setString(jsString); 
-		JS_SetProperty(g_cx, jsObj, "_fullname", val);
+		JS_SetProperty(g_cx, jsObj, "_fullname", val);*/
+
+		val.setBoolean(true);
+		JS_SetProperty(g_cx, jsObj, "$isv3", val);
 
         val.setObject(*jsObj);
         setVal(e, val);

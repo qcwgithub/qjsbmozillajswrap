@@ -20,6 +20,7 @@
                 '<(source_path)/mozjswrap.h',
                 '<(source_path)/callstack.cpp',
                 '<(source_path)/storage.cpp',
+                '<(source_path)/uthash.h',
             ],
             'conditions': 
             [
