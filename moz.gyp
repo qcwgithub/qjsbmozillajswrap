@@ -14,7 +14,7 @@
                 '<(source_path)/debugger/cocos',
             ],            
             'includes': [ 'common.gypi', ],
-            'defines': ['MOZ_JSWRAP_COMPILATION'],
+            'defines': ['MOZ_JSWRAP_COMPILATION', 'USE_HASH'],
             'sources': [
                 '<(source_path)/mozjswrap.cpp',
                 '<(source_path)/mozjswrap.h',

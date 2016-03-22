@@ -1,4 +1,4 @@
-
+Ôªø
 #ifndef __MOZ_JSWRAP_HEADER__
 #define __MOZ_JSWRAP_HEADER__
 
@@ -8,8 +8,9 @@
 #pragma message("******** mozjswrap: js debug is disabled! ********") 
 #endif
 
-
+#ifdef USE_HASH
 #include "uthash.h"
+#endif
 #include "jsapi.h"
 #include "mozilla/Maybe.h"
 //#include "js/tracer.h"
@@ -42,8 +43,8 @@ extern mozilla::Maybe<JS::PersistentRootedObject> g_global;
 
 typedef int MAPID;
 
-extern MAPID idFunRet; // callFunctionValue∫Û£¨Õ˘ valueMap ÃÌº”∫Ûµ√µΩµƒIDI
-extern MAPID idSave; //Õ˘valueMapÃÌº”∫Ûµ√µΩµƒID
+extern MAPID idFunRet; // callFunctionValueÂêéÔºåÂæÄ valueMap Ê∑ªÂä†ÂêéÂæóÂà∞ÁöÑIDI
+extern MAPID idSave; //ÂæÄvalueMapÊ∑ªÂä†ÂêéÂæóÂà∞ÁöÑID
 
 extern JS::Heap<JSObject*>* ppCSObj;
 extern MAPID idErrorEntry;
@@ -299,30 +300,6 @@ public:
     static void clear(bool bClear);
 };
 
-
-// struct stHeapValue
-// {
-//     JS::Heap<JS::Value> val;
-//     stHeapValue(){}
-//     stHeapValue(JS::HandleValue v){ val = v; }
-// };
-
-struct stHeapValue
-{
-    JS::Heap<JS::Value> heapValue;
-	int refCount;
-    bool bTempTrace;
-
-    // bTrace and hasFinalizeOp
-    // only one of them could be true
-    // or both false
-    bool bTrace;
-    bool hasFinalizeOp;
-	char mark;
-    stHeapValue() : refCount(0), bTrace(false), bTempTrace(false), hasFinalizeOp(false), mark(0) {}
-    stHeapValue(JS::HandleValue val) : refCount(0), bTrace(false), bTempTrace(false), hasFinalizeOp(false), heapValue(val), mark(0) {}
-};
-
 // get object, ignore failure
 #define MGETOBJ0(id, obj) \
     JS::RootedObject obj(g_cx, 0);\
@@ -343,29 +320,132 @@ struct stHeapValue
     }\
     JS::RootedObject obj(g_cx, &___valObj.toObject());
 
-/*
+struct stHeapValue
+{
+#ifdef USE_HASH
+	int key;
+#endif
+
+    JS::Heap<JS::Value> heapValue;
+	int refCount;
+    bool bTempTrace;
+
+    // bTrace and hasFinalizeOp
+    // only one of them could be true
+    // or both false
+    bool bTrace;
+    bool hasFinalizeOp;
+	char mark;
+
+#ifdef USE_HASH
+	UT_hash_handle hh;
+#endif
+
+    stHeapValue()
+	{
+		Init();
+	}
+    stHeapValue(JS::HandleValue val) : heapValue(val)
+	{
+		Init();
+	}
+
+	void Init()
+	{
+		refCount = 0;
+		bTrace = false;
+		bTempTrace = false;
+		hasFinalizeOp = false;
+		mark = 0;
+	}
+};
+
+#ifdef USE_HASH
+struct stVMap
+{
+	uint64_t key;
+	int id;
+	UT_hash_handle hh;
+};
+#endif
 
 
+#ifdef USE_HASH
 
-*/
+typedef stHeapValue* VALUEMAP;
+typedef stHeapValue* VALUEMAPIT;
+typedef stHeapValue* VALUEMAP_VP;
+
+typedef stVMap* VMAP;
+typedef stVMap* VMAPIT;
+
+#else // #ifdef USE_HASH
+
+typedef stHeapValue* VALUEMAP_VP;
+typedef map<int, stHeapValue > VALUEMAP;
+typedef VALUEMAP::iterator VALUEMAPIT;
+
+typedef map<uint64_t, MAPID > VMAP;
+typedef VMAP::iterator VMAPIT;
+
+#endif
 
 class valueMap
 {
-	// SpiderMonkey'GC is moving GC
-	// which means object's address may change after GC
-	// so we put object's jsval in stHeapValue structure to make sure always having newest address
-    typedef map<int, stHeapValue > VALUEMAP;
-    typedef VALUEMAP::iterator VALUEMAPIT;
-    static VALUEMAP mMap;
+public:
+	static VALUEMAP mMap;
+	static VMAP VMap;
+
+private:
     static int index;
     static bool tracing;
 
-    typedef map<uint64_t, MAPID > VMAP;
-	static VMAP VMap;
 	static list<int> lstFree;
 
 	static std::list<int> LstTempID;
 
+#ifdef USE_HASH
+public:
+	static std::list<stHeapValue*> lstHeapValue;
+	static stHeapValue* Alloc_stHeapValue()
+	{
+		stHeapValue* v;
+		if (lstHeapValue.size() > 0)
+		{
+			v = *(--lstHeapValue.end());
+			lstHeapValue.pop_back();
+		}
+		else
+		{
+			v = new stHeapValue();
+		}
+		return v;
+	}
+	static void Return_stHeapValue(stHeapValue* v)
+	{
+		lstHeapValue.push_back(v);
+	}
+
+	static std::list<stVMap*> lststVMap;
+	static stVMap* Alloc_stVMap()
+	{
+		stVMap* v;
+		if (lststVMap.size() > 0)
+		{
+			v = *(--lststVMap.end());
+			lststVMap.pop_back();
+		}
+		else
+		{
+			v = new stVMap();
+		}
+		return v;
+	}
+	static void Return_stVMap(stVMap* v)
+	{
+		lststVMap.push_back(v);
+	}
+#endif
 public:
 	static void clearVMap();
 	static void rebuildVMap();
@@ -385,12 +465,109 @@ public:
 	static bool getHasFinalizeOp(MAPID id);
     static bool clear();
 
-	static int getMapSize(){ return (int)mMap.size(); }
+	static int getMapSize()
+	{
+#ifdef USE_HASH
+		return (int)HASH_COUNT(mMap);
+#else
+		return (int)mMap.size();
+#endif
+	}
 
 	static void _addTempID(MAPID id) { LstTempID.push_back(id); }
 	static void _clearTempIDs();
 	static int getIndex() { return index; }
 };
+
+
+#ifdef USE_HASH
+
+inline VALUEMAPIT mmap_find(int key)
+{
+	VALUEMAPIT v;
+	HASH_FIND_INT(valueMap::mMap, &key, v);
+	return v;
+}
+#define mit_valid(it) (it != 0)
+#define mit_invalid(it) (it == 0)
+#define mit_k(it) (it->key)
+#define mit_v(it) (*it)
+#define mit_pv(it) (it)
+#define mmap_erase(it) \
+	do \
+	{ \
+		HASH_DEL(mMap, it); \
+	    valueMap::Return_stHeapValue(it); \
+	} while(0)
+
+#define mmap_loop(it) for (it = (VALUEMAPIT)mMap; it != 0; it = (VALUEMAPIT)it->hh.next)
+#define mmap_newelement(p, J, val, mark) \
+	stHeapValue* p = valueMap::Alloc_stHeapValue(); \
+	memset(&p->hh, 0, sizeof(p->hh)); \
+	p->Init(); \
+	p->key = J; \
+	p->heapValue.set(val); \
+	p->mark = (char)mark
+
+#define mmap_add(k, v) HASH_ADD_INT(mMap, key, v)
+#define mmap_clear() HASH_CLEAR(hh, valueMap::mMap)
+
+
+inline VMAPIT vmap_find(uint64_t key)
+{
+	VMAPIT v;
+	HASH_FIND(hh, valueMap::VMap, &key, sizeof(uint64_t), v);
+	return v;
+}
+#define vit_valid(it) (it != 0)
+#define vit_invalid(it) (it == 0)
+#define vit_k(it) (it->key)
+#define vit_v(it) (it->id)
+#define vmap_erase(it) \
+	do \
+	{ \
+		HASH_DEL(VMap, it); \
+		valueMap::Return_stVMap(it); \
+	} while (0)
+
+#define vmap_add(k, v) \
+	do \
+	{ \
+		stVMap* _p = valueMap::Alloc_stVMap(); \
+		memset(&_p->hh, 0, sizeof(_p->hh)); \
+		_p->key = k; \
+		_p->id = v; \
+		HASH_ADD(hh, VMap, key, sizeof(uint64_t), _p); \
+	} while (0)
+
+#define vmap_clear() HASH_CLEAR(hh, valueMap::VMap)
+
+#else // #ifdef USE_HASH
+
+#define mmap_find(key) mMap.find(key)
+#define mit_valid(it) (it != mMap.end())
+#define mit_invalid(it) (it == mMap.end())
+#define mit_k(it) (it->first)
+#define mit_v(it) (it->second)
+#define mit_pv(it) (&(it->second))
+#define mmap_erase(it) mMap.erase(it)
+#define mmap_loop(it) for (it = mMap.begin(); it != mMap.end(); it++)
+#define mmap_newelement(p, J, val, mark) stHeapValue _p(val); \
+	_p.mark = (char)mark; \
+	stHeapValue* p = &_p
+#define mmap_add(k, pv) mMap.insert(VALUEMAP::value_type(k, *pv))
+#define mmap_clear() mMap.clear()
+
+#define vmap_find(key) VMap.find(key)
+#define vit_valid(it) (it != VMap.end())
+#define vit_invalid(it) (it == VMap.end())
+#define vit_k(it) (it->first)
+#define vit_v(it) (it->second)
+#define vmap_erase(it) VMap.erase(it)
+#define vmap_add(k, v) VMap.insert(VMAP::value_type(k, v))
+#define vmap_clear() VMap.clear()
+
+#endif // #ifdef USE_HASH .. #else
 
 // class objRoot
 // {
