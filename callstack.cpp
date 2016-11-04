@@ -1,6 +1,5 @@
 #include "mozjswrap.h"
 
-
 //
 // global variables
 //
@@ -176,8 +175,44 @@ short           getInt16   (eGetType e) { return getNumber<short>(e); }
 unsigned short  getUInt16  (eGetType e) { return getNumber<unsigned short>(e); }
 int             getInt32   (eGetType e) { return getNumber<int>(e); }
 unsigned int    getUInt32  (eGetType e) { return getNumber<unsigned int>(e); }
-long long       getInt64   (eGetType e) { return getNumber<long long>(e); }
-unsigned long long getUInt64  (eGetType e) { return getNumber<unsigned long long>(e); }
+long long       getInt64   (eGetType e) 
+{
+	// return getNumber<long long>(e);
+	JS::RootedValue val(g_cx, getVal(e, true));
+	if (!val.isObject())
+		return 0;
+	JS::RootedObject obj(g_cx, &val.toObject());
+    JS::RootedValue _rval(g_cx);
+	if (JS_CallFunctionName(g_cx, obj, "toString", JS::HandleValueArray::fromMarkedLocation(0, NULL), &_rval))
+	{
+		char* s = val2String(_rval);
+		if (s)
+		{
+			long long r = stoll(s);
+			return r;
+		}
+	}
+	return 0;
+}
+unsigned long long getUInt64  (eGetType e)
+{
+	// return getNumber<unsigned long long>(e);
+	JS::RootedValue val(g_cx, getVal(e, true));
+	if (!val.isObject())
+		return 0;
+	JS::RootedObject obj(g_cx, &val.toObject());
+    JS::RootedValue _rval(g_cx);
+	if (JS_CallFunctionName(g_cx, obj, "toString", JS::HandleValueArray::fromMarkedLocation(0, NULL), &_rval))
+	{
+		char* s = val2String(_rval);
+		if (s)
+		{
+			unsigned long long r = stoull(s);
+			return r;
+		}
+	}
+	return 0;
+}
 int             getEnum    (eGetType e) { return getNumber<int>(e); }
 float           getSingle  (eGetType e) { return getNumber<float>(e); }
 double          getDouble  (eGetType e) { return getNumber<double>(e); }
@@ -378,8 +413,38 @@ void setInt16   (eSetType e, short v)           { return setNumberI<short>(e, v)
 void setUInt16  (eSetType e, unsigned short v)  { return setNumberI<unsigned short>(e, v); }
 void setInt32   (eSetType e, int v)             { return setNumberI<int>(e, v); }
 void setUInt32  (eSetType e, unsigned int v)    { return setNumberI<unsigned int>(e, v); }
-void setInt64   (eSetType e, long long v)       { return setNumberF<long long>(e, v); }
-void setUInt64  (eSetType e, unsigned long long v) { return setNumberF<unsigned long long>(e, v); }
+
+extern JSObject* GetSystem();
+void setInt64   (eSetType e, long long v)       
+{
+	// return setNumberF<long long>(e, v); 
+	char sz[32] = {0};
+	sprintf(sz, "%lld", v);
+	JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, sz));
+	// JS::RootedValue val(g_cx, STRING_TO_JSVAL(jsString));
+	JS::Value val = STRING_TO_JSVAL(jsString);
+
+	JS::RootedObject obj(g_cx, GetSystem());
+    JS::RootedValue _rval(g_cx);
+	JS_CallFunctionName(g_cx, obj, "Int64", JS::HandleValueArray::fromMarkedLocation(1, &val), &_rval);
+
+	setVal(e, _rval);
+}
+void setUInt64  (eSetType e, unsigned long long v) 
+{
+	// return setNumberF<unsigned long long>(e, v); 
+	char sz[32] = {0};
+	sprintf(sz, "%llu", v);
+	JS::RootedString jsString(g_cx, JS_NewStringCopyZ(g_cx, sz));
+	// JS::RootedValue val(g_cx, STRING_TO_JSVAL(jsString));
+	JS::Value val = STRING_TO_JSVAL(jsString);
+
+	JS::RootedObject obj(g_cx, GetSystem());
+    JS::RootedValue _rval(g_cx);
+	JS_CallFunctionName(g_cx, obj, "UInt64", JS::HandleValueArray::fromMarkedLocation(1, &val), &_rval);
+
+	setVal(e, _rval);
+}
 void setEnum    (eSetType e, int v)             { return setNumberI<int>(e, v); }
 void setSingle  (eSetType e, float v)           { return setNumberF<float>(e, v); }
 void setDouble  (eSetType e, double v)          { return setNumberF<double>(e, v); }

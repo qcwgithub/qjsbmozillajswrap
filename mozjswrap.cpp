@@ -170,6 +170,15 @@ JSObject* GetJSTableByName(char* name)
     return obj;
 }
 
+JSObject* GetBridge()
+{
+	return GetJSTableByName("Bridge");
+}
+JSObject* GetSystem()
+{
+	return GetJSTableByName("System");
+}
+
 JSObject* getObjCtorPrototype(JS::HandleObject obj)
 {
 	JS::RootedValue val(g_cx);
@@ -356,8 +365,9 @@ MOZ_API int newJSClassObject(const char* name)
     val.setString(jsString);
 
     JS::RootedValue _rval(g_cx);
-	JS::RootedObject roGlobal(g_cx, g_global.ref().get());
-    if (JS_CallFunctionName(g_cx, roGlobal, "jsb_CallObjectCtor", JS::HandleValueArray::fromMarkedLocation(1, val.address()), &_rval))
+	//JS::RootedObject roGlobal(g_cx, g_global.ref().get());
+	JS::RootedObject bridge(g_cx, GetBridge());
+    if (JS_CallFunctionName(g_cx, bridge, "callObjCtor", JS::HandleValueArray::fromMarkedLocation(1, val.address()), &_rval))
     {
         //JS::RootedValue rval(g_cx, _rval);
         if (_rval.isObject())
