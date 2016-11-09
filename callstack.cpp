@@ -464,7 +464,7 @@ void setString(eSetType e, const jschar* value)
 }
 void setVector2(eSetType e, float x, float y)
 {
-    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector2", g_bUseCacheForStruct));
+    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector2"));
     if (jsObj)
     {
         JS::RootedValue val(g_cx);
@@ -485,7 +485,7 @@ void setVector2(eSetType e, float x, float y)
 }
 void setVector3(eSetType e, float x, float y, float z)
 {
-    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector3", g_bUseCacheForStruct));
+    JS::RootedObject jsObj(g_cx, _createJSClassObject("UnityEngine.Vector3"));
     if (jsObj)
     {
         JS::RootedValue val(g_cx);

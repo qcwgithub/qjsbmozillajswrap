@@ -303,15 +303,8 @@ JSObject* jsb_getStackObj(char* name)
 // 
 // 注意：这个操作有别于 new GameObject.ctor()，new GameObject.ctor() 是会调用到C#去创建 C#对象，我们这里只是单纯的JS对象
 // 
-JSObject* _createJSClassObject(char* name, _BOOL useCache)
+JSObject* _createJSClassObject(char* name)
 {
-	if (useCache)
-	{
-		JSObject* jsObj = jsb_getStackObj(name);
-		if (jsObj)
-			return jsObj;
-	}
-
     JS::RootedObject _t(g_cx);
 
     if (_t = GetJSTableByName(name))
@@ -320,22 +313,15 @@ JSObject* _createJSClassObject(char* name, _BOOL useCache)
         JS::RootedObject prototypeObj(g_cx, getObjCtorPrototype(tableObj));
         
 		JSObject* jsObj = JS_NewObject(g_cx, &normal_class, prototypeObj/* proto */, JS::NullPtr()/* parentProto */);
-
-		if (useCache)
-		{
-			JS::RootedObject roObj(g_cx, jsObj);
-			jsb_saveStackObj(roObj); 
-		}
-
         return jsObj;
     }
     return 0;
 }	
 
 // to create a C# object，绝对不是 Vector2，Vector3
-MOZ_API MAPID createJSClassObject(char* name, _BOOL useCache)
+MOZ_API MAPID createJSClassObject(char* name)
 {
-    JS::RootedObject jsObj(g_cx, _createJSClassObject(name, useCache));
+    JS::RootedObject jsObj(g_cx, _createJSClassObject(name));
     if (jsObj)
     {
 		JS::Value _v; 

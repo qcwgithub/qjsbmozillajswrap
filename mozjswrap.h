@@ -209,8 +209,8 @@ extern "C"
     MOZ_API int InitJSEngine(JSErrorReporter er, CSEntry entry, JSNative req, OnObjCollected onObjCollected, JSNative print);
     MOZ_API _BOOL initErrorHandler();
     MOZ_API void ShutdownJSEngine(_BOOL bCleanup);
-    JSObject* _createJSClassObject(char* name, _BOOL useCache);
-    MOZ_API MAPID createJSClassObject(char* name, _BOOL useCache);
+    JSObject* _createJSClassObject(char* name);
+    MOZ_API MAPID createJSClassObject(char* name);
     MOZ_API void attachFinalizerObject(MAPID id);
 	MOZ_API int newJSClassObject(const char* name);
 
