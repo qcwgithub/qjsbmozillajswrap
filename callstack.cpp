@@ -87,7 +87,7 @@ JS::Value getVal(eGetType e, bool bIncIndex)
 			JS::RootedObject jsObj(g_cx, &val.toObject());
 
 			JS::RootedValue v(g_cx);
-			bool suc = JS_GetProperty(g_cx, jsObj, "Value", &v);
+			bool suc = JS_GetProperty(g_cx, jsObj, "v", &v);
             Assert(suc);
 			return v;
 		}
@@ -381,7 +381,7 @@ void setVal(eSetType e, JS::HandleValue val)
 			JS::RootedObject jsObj(g_cx, &v.toObject());
 
 			JS::RootedValue mfval(g_cx, val);
-			JS_SetProperty(g_cx, jsObj, "Value", mfval);
+			JS_SetProperty(g_cx, jsObj, "v", mfval);
 		}
 		break;
 	}
