@@ -1,5 +1,13 @@
 #include "mozjswrap.h"
 
+#ifdef _WINDOWS
+#define STRING_TO_LONGLONG(s) stoll(s)
+#define STRING_TO_ULONGLONG(s) stoull(s)
+#else
+#include <stdlib.h>
+#define STRING_TO_LONGLONG(s) strtoll(s, 0, 0)
+#define STRING_TO_ULONGLONG(s) strtoull(s, 0, 0)
+#endif
 //
 // global variables
 //
@@ -188,7 +196,7 @@ long long       getInt64   (eGetType e)
 		char* s = val2String(_rval);
 		if (s)
 		{
-			long long r = stoll(s);
+			long long r = STRING_TO_LONGLONG(s);
 			return r;
 		}
 	}
@@ -207,7 +215,7 @@ unsigned long long getUInt64  (eGetType e)
 		char* s = val2String(_rval);
 		if (s)
 		{
-			unsigned long long r = stoull(s);
+			unsigned long long r = STRING_TO_ULONGLONG(s);
 			return r;
 		}
 	}
