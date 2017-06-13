@@ -33,10 +33,12 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
 	JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
 	aStack.args = &args;
 
-    int op = args.get(0).toInt32();
-    int slot = args.get(1).toInt32();
-    int index = args.get(2).toInt32();
-    bool isStatic = args.get(3).toBoolean();
+	int argsIndex = args.get(0).toInt32();
+
+    //int op = args.get(0).toInt32();
+    //int slot = args.get(1).toInt32();
+    //int index = args.get(2).toInt32();
+    //bool isStatic = args.get(3).toBoolean();
 
     //
     // Calculate actual parameter count
@@ -47,11 +49,15 @@ bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp)
         aStack.actualArgc--;
 	}
 	aStack.actualArgc = argc;
-    aStack.argIndex = 4;
+    //aStack.argIndex = 4;
+	aStack.argIndex = 1;
 
 	jsCallStack.Push(aStack);
 
-	bool ret = (_TRUE == csEntry(op, slot, index, (isStatic ? 1 : 0), aStack.actualArgc - aStack.argIndex));
+	bool ret = (_TRUE == csEntry(
+		//op, slot, index, (isStatic ? 1 : 0), 
+		argsIndex,
+		aStack.actualArgc - aStack.argIndex));
 
 	valueMap::_clearTempIDs();
 	jsCallStack.Pop();

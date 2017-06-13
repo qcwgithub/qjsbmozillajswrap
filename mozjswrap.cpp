@@ -519,8 +519,8 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
 	minorGCCount = 0;
 
 	cx = JS_NewContext(rt, 8192);
-	/*JS::RuntimeOptionsRef(rt).setIon(true);
-	JS::RuntimeOptionsRef(rt).setBaseline(true);*/
+	//JS::RuntimeOptionsRef(rt).setIon(true);
+	//JS::RuntimeOptionsRef(rt).setBaseline(true);
 
 	// Set error reporter
 	oldErrorReporter = JS_SetErrorReporter(cx, er);

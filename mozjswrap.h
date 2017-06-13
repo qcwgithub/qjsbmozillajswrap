@@ -118,7 +118,10 @@ extern "C"
         SetSaveAndTempTrace = 2,
     };
 
-    typedef _BOOL (* CSEntry)(int op, int slot, int index, int bStatic, int argc);
+    typedef _BOOL (* CSEntry)(
+		//int op, int slot, int index, int bStatic, 
+		int argsIndex,
+		int argc);
 	typedef void (* OnObjCollected)(MAPID id);
     bool JSCall(JSContext *cx, unsigned argc, JS::Value *vp);
 
