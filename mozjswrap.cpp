@@ -485,7 +485,8 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
                          CSEntry entry, 
                          JSNative req, 
                          OnObjCollected onObjCollected, 
-                         JSNative print)
+                         JSNative print,
+						 int option)
 {
     JSRuntime*& rt = g_rt;
     JSContext*& cx = g_cx;
@@ -519,8 +520,8 @@ MOZ_API int InitJSEngine(JSErrorReporter er,
 	minorGCCount = 0;
 
 	cx = JS_NewContext(rt, 8192);
-	//JS::RuntimeOptionsRef(rt).setIon(true);
-	//JS::RuntimeOptionsRef(rt).setBaseline(true);
+	JS::RuntimeOptionsRef(rt).setIon((option & 0x1));
+	JS::RuntimeOptionsRef(rt).setBaseline((option & 0x2));
 
 	// Set error reporter
 	oldErrorReporter = JS_SetErrorReporter(cx, er);
